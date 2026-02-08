@@ -60,6 +60,27 @@ else
 fi
 echo ""
 
+# ── Step 2.5: Enforce Hardened Session Protocol ──────────
+# SARH Constitution: Session config MUST NOT be overwritten by git pull.
+# Force file-based sessions, no encryption, null domain.
+echo "▸ [2.5] Enforcing Hardened Session Protocol..."
+sed -i 's/^SESSION_DRIVER=.*/SESSION_DRIVER=file/' .env
+sed -i 's/^SESSION_ENCRYPT=.*/SESSION_ENCRYPT=false/' .env
+sed -i 's/^SESSION_DOMAIN=.*/SESSION_DOMAIN=null/' .env
+# Ensure keys exist if missing
+grep -q "^SESSION_DRIVER=" .env    || echo "SESSION_DRIVER=file" >> .env
+grep -q "^SESSION_ENCRYPT=" .env   || echo "SESSION_ENCRYPT=false" >> .env
+grep -q "^SESSION_DOMAIN=" .env    || echo "SESSION_DOMAIN=null" >> .env
+grep -q "^SESSION_SECURE_COOKIE=" .env || echo "SESSION_SECURE_COOKIE=true" >> .env
+grep -q "^SESSION_LIFETIME=" .env  || echo "SESSION_LIFETIME=120" >> .env
+# Force secure cookie value
+sed -i 's/^SESSION_SECURE_COOKIE=.*/SESSION_SECURE_COOKIE=true/' .env
+echo "  ✓ SESSION_DRIVER=file"
+echo "  ✓ SESSION_ENCRYPT=false"
+echo "  ✓ SESSION_DOMAIN=null (auto-detect)"
+echo "  ✓ SESSION_SECURE_COOKIE=true (HTTPS)"
+echo ""
+
 # ── Step 3: Migrate + Seed (Empty DB → Full Schema) ─────
 echo "▸ [3/8] Running migrations & seeding (RBAC + Traps + Badges)..."
 php artisan migrate --force --seed
@@ -131,10 +152,12 @@ echo "  ✓ Files deployed to $DOMAIN_PUBLIC"
 echo "  ✓ Bridge index.php with absolute paths created"
 echo ""
 
-# ── Step 7: Clear Old Cache ─────────────────────────────
-echo "▸ [7/8] Clearing old cache..."
+# ── Step 7: Clear Old Cache + Stale Sessions ────────────
+echo "▸ [7/8] Clearing old cache + stale sessions..."
 php artisan optimize:clear
+rm -f storage/framework/sessions/* 2>/dev/null || true
 echo "  ✓ Old cache cleared"
+echo "  ✓ Stale session files purged"
 echo ""
 
 # ── Step 8: Cache config & routes (skip views — causes error) ─

@@ -11,14 +11,17 @@ return [
     |
     | This option determines the default session driver that is utilized for
     | incoming requests. Laravel supports a variety of storage options to
-    | persist session data. Database storage is a great default choice.
+    | persist session data. File storage is the safest for shared hosting.
+    |
+    | SARH Hardened: Default forced to 'file'. Database/redis sessions
+    | cause 419 loops on Hostinger after deploys clear the sessions table.
     |
     | Supported: "file", "cookie", "database", "apc",
     |            "memcached", "redis", "dynamodb", "array"
     |
     */
 
-    'driver' => env('SESSION_DRIVER', 'database'),
+    'driver' => env('SESSION_DRIVER', 'file'),
 
     /*
     |--------------------------------------------------------------------------
@@ -45,9 +48,12 @@ return [
     | should be encrypted before it's stored. All encryption is performed
     | automatically by Laravel and you may use the session like normal.
     |
+    | SARH Hardened: Default forced to false. Encrypted file sessions
+    | become invalid when APP_KEY rotates during deployment.
+    |
     */
 
-    'encrypt' => env('SESSION_ENCRYPT', false),
+    'encrypt' => (bool) env('SESSION_ENCRYPT', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -154,6 +160,9 @@ return [
     | available to. By default, the cookie will be available to the root
     | domain and all subdomains. Typically, this shouldn't be changed.
     |
+    | SARH Hardened: Default null. Let Laravel auto-detect from request.
+    | Explicit domain strings cause cookie mismatch on www vs non-www.
+    |
     */
 
     'domain' => env('SESSION_DOMAIN'),
@@ -169,7 +178,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    'secure' => env('SESSION_SECURE_COOKIE', false),
 
     /*
     |--------------------------------------------------------------------------
