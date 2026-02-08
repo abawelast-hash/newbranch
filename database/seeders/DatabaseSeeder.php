@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
             BadgesSeeder::class,
             TrapsSeeder::class,
+            ProjectDataSeeder::class,
         ]);
     }
 }

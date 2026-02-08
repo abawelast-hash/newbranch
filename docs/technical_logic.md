@@ -1,5 +1,5 @@
 # SARH — Architectural Blueprint (Technical Logic)
-> **Version:** 1.6.0 | **Updated:** 2026-02-09
+> **Version:** 1.7.0 | **Updated:** 2026-02-08
 > **Scope:** Database schema, entity relationships, data flow architecture, and design decisions
 
 ---
@@ -733,3 +733,71 @@ AttendanceService Bypass:
 | Date | Version | Changes |
 |------|---------|---------|
 | 2026-02-09 | 1.6.0 | UI/UX Overhaul: Orange theme, Tajawal universal font, collapsible sidebar, UserResource Core Four simplification with mandatory avatar, BranchResource Leaflet.js map picker with infinite geofence radius (1m–100km), Level 10 God Mode via Gate::before(), geofence bypass for super admins, complete bilingual lang files for users/branches |
+| 2026-02-08 | 1.7.0 | Competition Engine: ProjectDataSeeder (5 real Saudi branches + 42 employees), BranchLeaderboardPage with 6-tier Levels scoring, DailyNewsTicker with Trophy 🏆 / Turtle 🐢 system, manual points adjustment in UserResource, Cairo font replacing Tajawal, manage-competition + adjust-points gates, bilingual competition lang files |
+
+---
+
+## 14. Competition Engine & Branch Leaderboard (v1.7.0)
+
+### 14.1 Mass Data Seeding Architecture
+
+**Seeder:** `ProjectDataSeeder` — idempotent via `updateOrCreate` on email/code.
+
+| Entity | Count | Distribution |
+|--------|-------|-------------|
+| Branches | 5 | RUH-HQ (12), JED-01 (10), DMM-01 (8), MED-01 (6), ABH-01 (5) |
+| Super Admin | 1 | `abdullah@sarh.app` — Level 10, 500 initial points |
+| Employees | 41 | Real Saudi names, distributed by branch size |
+| **Total Users** | **42** | Including super admin |
+
+**Branch GPS Coordinates:**
+
+| Code | City | Latitude | Longitude | Radius |
+|------|------|----------|-----------|--------|
+| RUH-HQ | الرياض | 24.7136 | 46.6753 | 50m |
+| JED-01 | جدة | 21.4858 | 39.1925 | 40m |
+| DMM-01 | الدمام | 26.4207 | 50.0888 | 35m |
+| MED-01 | المدينة | 24.4672 | 39.6024 | 30m |
+| ABH-01 | أبها | 18.2164 | 42.5053 | 25m |
+
+### 14.2 Branch Discipline Scoring Formula
+
+```
+Score = 100 (base)
+      - (late_checkins × 2)
+      - (missed_days × 5)
+      + (perfect_employees × 10)
+      + (total_points × 0.1)
+```
+
+**6-Tier Level System:**
+
+| Score Range | Level | Icon |
+|-------------|-------|------|
+| ≥ 150 | Legendary (أسطوري) | 🏆 |
+| ≥ 120 | Diamond (ألماسي) | 💎 |
+| ≥ 100 | Gold (ذهبي) | 🥇 |
+| ≥ 80 | Silver (فضي) | 🥈 |
+| ≥ 60 | Bronze (برونزي) | 🥉 |
+| < 60 | Starter (مبتدئ) | 🐢 |
+
+### 14.3 Trophy & Turtle System
+
+- **Trophy 🏆:** Awarded to rank #1 branch (best discipline score)
+- **Turtle 🐢:** Assigned to last-place branch (worst discipline score)
+- **DailyNewsTicker:** Dashboard widget showing real-time competition updates
+- Ticker items: best/worst branch today, attendance stats, top scorer, total employees
+
+### 14.4 Manual Points Adjustment
+
+- **Location:** UserResource table → "Adjust Points" action (⭐ icon)
+- **Gate:** `adjust-points` — Level 10 only
+- **Flow:** Enter points (positive=add, negative=deduct) + reason → `total_points` increment + `points_transactions` log
+- **Notification:** Filament toast confirms adjustment with employee name and amount
+
+### 14.5 Font Migration
+
+- **From:** Tajawal (v1.6.0)
+- **To:** Cairo (v1.7.0)
+- **Locations:** `AdminPanelProvider->font('Cairo')`, `resources/css/app.css` Google Fonts import
+- **Weights:** 300, 400, 500, 600, 700, 800, 900

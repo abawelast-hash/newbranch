@@ -35,7 +35,7 @@ class AdminPanelProvider extends PanelProvider
                 'success' => Color::Emerald,
                 'info'    => Color::Sky,
             ])
-            ->font('Tajawal')
+            ->font('Cairo')
             ->sidebarCollapsibleOnDesktop()
             ->sidebarFullyCollapsibleOnDesktop()
             ->maxContentWidth('full')

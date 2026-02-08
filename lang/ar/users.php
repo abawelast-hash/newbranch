@@ -55,4 +55,13 @@ return [
     'type_part_time'         => 'دوام جزئي',
     'type_contract'          => 'عقد',
     'type_intern'            => 'متدرب',
+
+    // Points Management (v1.7.0)
+    'total_points'           => 'نقاط التميز',
+    'adjust_points'          => 'تعديل النقاط',
+    'points_amount'          => 'عدد النقاط',
+    'points_helper'          => 'رقم موجب للإضافة، سالب للخصم',
+    'points_reason'          => 'سبب التعديل',
+    'points_adjusted'        => 'تم تعديل النقاط',
+    'points_adjusted_body'   => 'تم إضافة :points نقطة لـ :name',
 ];

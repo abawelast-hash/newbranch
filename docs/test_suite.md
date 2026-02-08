@@ -1,5 +1,5 @@
 # SARH — Validation Protocol (Test Suite)
-> **Version:** 1.6.0 | **Updated:** 2026-02-09
+> **Version:** 1.7.0 | **Updated:** 2026-02-08
 > **Scope:** Test cases, edge cases, validation results, and zero-side-effect verification
 
 ---
@@ -646,6 +646,7 @@ Expect: AuditLog record is created with action = 'vault_access'
 | 2026-02-07 | 1.3.0 | Phase 3 — 9 new test cases for Whistleblower anonymity, messaging, circulars, and PWA authentication |
 | 2026-02-08 | 1.4.0 | Phase 4 — 7 new test cases for financial reporting accuracy, predictive analytics, and Level 10 security gates |
 | 2026-02-08 | 1.5.0 | Phase 5 (Final) — 5 new test cases for caching, branch scope isolation, install command, and production hardening. Final suite: 89+ tests |
+| 2026-02-08 | 1.7.0 | Competition Engine — 8 new test cases for ProjectDataSeeder, BranchLeaderboardPage scoring, DailyNewsTicker, Trophy/Turtle, manual points adjustment |
 
 ---
 
@@ -694,3 +695,63 @@ Expect: Cached result unchanged until TTL expires or cache cleared
 | Phase 4 — Command Center | 13 | 35+ | ✅ ALL PASS |
 | Phase 5 — Production Hardening | 8 | 20+ | ✅ ALL PASS |
 | **TOTAL** | **99+** | **220+** | **✅ ALL GREEN** |
+
+---
+
+## §21. Competition Engine Tests (v1.7.0)
+
+### TC-COMP-001: ProjectDataSeeder Creates 5 Branches
+```
+Given: Fresh database, run ProjectDataSeeder
+Expect: 5 branches with codes RUH-HQ, JED-01, DMM-01, MED-01, ABH-01
+Assert: Each branch has valid GPS coordinates and geofence_radius
+```
+
+### TC-COMP-002: ProjectDataSeeder Creates 42 Users
+```
+Given: Fresh database, run ProjectDataSeeder
+Expect: 42 users total (1 super admin + 41 employees)
+Assert: Super admin (abdullah@sarh.app) has security_level=10, total_points=500
+```
+
+### TC-COMP-003: ProjectDataSeeder Is Idempotent
+```
+Given: Run ProjectDataSeeder twice
+Expect: No duplicate branches or users
+Assert: Count remains 5 branches, 42 users after second run
+```
+
+### TC-COMP-004: BranchLeaderboardPage Scores Correctly
+```
+Given: Branch with 0 late check-ins, 10 employees, all perfect
+Expect: Score = 100 - 0 - 0 + (10 × 10) + points_bonus = 200+
+Assert: Level = "Legendary" with 🏆 icon
+```
+
+### TC-COMP-005: Trophy Assigned to Rank 1
+```
+Given: Multiple branches with different scores
+Expect: Highest-scoring branch has badge = '🏆'
+Assert: badge_label matches competition.trophy_winner translation
+```
+
+### TC-COMP-006: Turtle Assigned to Last Place
+```
+Given: Multiple branches with different scores
+Expect: Lowest-scoring branch has badge = '🐢'
+Assert: badge_label matches competition.turtle_last translation
+```
+
+### TC-COMP-007: Points Adjustment Increments total_points
+```
+Given: User with total_points=0, Level 10 admin adjusts +50
+Expect: User total_points = 50
+Assert: points_transactions table has record with points=50, awarded_by=admin_id
+```
+
+### TC-COMP-008: DailyNewsTicker Returns Items
+```
+Given: At least one attendance log today
+Expect: getNewsItems() returns non-empty array
+Assert: Each item has 'icon', 'text', 'color' keys
+```

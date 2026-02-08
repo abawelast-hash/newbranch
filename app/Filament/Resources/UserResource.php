@@ -6,10 +6,12 @@ use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 
 class UserResource extends Resource
@@ -255,6 +257,18 @@ class UserResource extends Resource
                     ->money('SAR')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('total_points')
+                    ->label(__('users.total_points'))
+                    ->numeric()
+                    ->sortable()
+                    ->badge()
+                    ->color(fn (?int $state): string => match (true) {
+                        ($state ?? 0) >= 100 => 'success',
+                        ($state ?? 0) >= 50  => 'warning',
+                        ($state ?? 0) > 0    => 'info',
+                        default               => 'gray',
+                    }),
+
                 Tables\Columns\TextColumn::make('security_level')
                     ->label(__('users.security_level'))
                     ->badge()
@@ -307,6 +321,47 @@ class UserResource extends Resource
                     ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('adjust_points')
+                    ->label(__('users.adjust_points'))
+                    ->icon('heroicon-o-star')
+                    ->color('warning')
+                    ->visible(fn (): bool => Gate::allows('adjust-points'))
+                    ->form([
+                        Forms\Components\TextInput::make('points')
+                            ->label(__('users.points_amount'))
+                            ->numeric()
+                            ->required()
+                            ->helperText(__('users.points_helper')),
+                        Forms\Components\Textarea::make('reason')
+                            ->label(__('users.points_reason'))
+                            ->required()
+                            ->maxLength(500),
+                    ])
+                    ->action(function (User $record, array $data): void {
+                        $points = (int) $data['points'];
+                        $record->increment('total_points', $points);
+
+                        // Log in points_transactions if table exists
+                        if (\Schema::hasTable('points_transactions')) {
+                            \DB::table('points_transactions')->insert([
+                                'user_id'    => $record->id,
+                                'points'     => $points,
+                                'reason'     => $data['reason'],
+                                'awarded_by' => auth()->id(),
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+
+                        Notification::make()
+                            ->title(__('users.points_adjusted'))
+                            ->body(__('users.points_adjusted_body', [
+                                'points' => $points,
+                                'name'   => $record->name_ar,
+                            ]))
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),

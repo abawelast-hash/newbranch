@@ -54,5 +54,18 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('bypass-geofence', function ($user) {
             return $user->security_level >= 10 || $user->is_super_admin;
         });
+
+        /*
+        |----------------------------------------------------------------------
+        | Competition Engine Gates (v1.7.0)
+        |----------------------------------------------------------------------
+        */
+        Gate::define('manage-competition', function ($user) {
+            return $user->security_level >= 10 || $user->is_super_admin;
+        });
+
+        Gate::define('adjust-points', function ($user) {
+            return $user->security_level >= 10 || $user->is_super_admin;
+        });
     }
 }

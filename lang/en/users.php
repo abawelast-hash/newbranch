@@ -55,4 +55,13 @@ return [
     'type_part_time'         => 'Part-time',
     'type_contract'          => 'Contract',
     'type_intern'            => 'Intern',
+
+    // Points Management (v1.7.0)
+    'total_points'           => 'Excellence Points',
+    'adjust_points'          => 'Adjust Points',
+    'points_amount'          => 'Points Amount',
+    'points_helper'          => 'Positive to add, negative to deduct',
+    'points_reason'          => 'Reason for Adjustment',
+    'points_adjusted'        => 'Points Adjusted',
+    'points_adjusted_body'   => ':points points added to :name',
 ];
