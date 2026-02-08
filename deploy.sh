@@ -4,13 +4,14 @@
 # Usage: bash deploy.sh          (first time + updates)
 # Repo:  https://github.com/ggoolbx0/sarh
 # Target: Hostinger (sarh.online)
+# Path:   domains/sarh.online/public_html (NOT ~/public_html)
 # Constitution: Zero-Patch Policy — No manual DB changes
 ###############################################################
 
 set -e
 
 PROJECT_DIR="/home/u850419603/sarh"
-PUBLIC_HTML="/home/u850419603/public_html"
+DOMAIN_PUBLIC="/home/u850419603/domains/sarh.online/public_html"
 REPO_URL="https://github.com/ggoolbx0/sarh.git"
 
 echo ""
@@ -36,9 +37,9 @@ echo ""
 
 cd "$PROJECT_DIR"
 
-# ── Step 1: Composer Install (No Dev) ────────────────────
+# ── Step 1: Composer Install (WITH dev — views need it) ──
 echo "▸ [1/8] Installing PHP dependencies..."
-composer install --no-dev --optimize-autoloader --no-interaction
+composer install --optimize-autoloader --no-interaction
 echo "  ✓ Composer dependencies installed"
 echo ""
 
@@ -62,10 +63,7 @@ echo ""
 # ── Step 3: Migrate + Seed (Empty DB → Full Schema) ─────
 echo "▸ [3/8] Running migrations & seeding (RBAC + Traps + Badges)..."
 php artisan migrate --force --seed
-echo "  ✓ Database schema created with seed data:"
-echo "    → 10-level RBAC roles & permissions"
-echo "    → Security traps (4 core traps)"
-echo "    → Gamification badges"
+echo "  ✓ Database schema created with seed data"
 echo ""
 
 # ── Step 4: Build Frontend Assets (Vite) ────────────────
@@ -75,35 +73,62 @@ if command -v npm &> /dev/null; then
     npm run build
     echo "  ✓ Vite assets compiled to public/build/"
 else
-    echo "  ⚠ npm not found — skip frontend build"
-    echo "    Run 'npm install && npm run build' locally and upload public/build/"
+    echo "  ⚠ npm not found — using pre-built assets from git"
 fi
 echo ""
 
-# ── Step 5: Storage Symlink (manual — exec() disabled on Hostinger) ──
+# ── Step 5: Storage Symlink ─────────────────────────────
 echo "▸ [5/8] Creating storage symlink..."
+mkdir -p "$PROJECT_DIR/storage/app/public"
 if [ -L "$PROJECT_DIR/public/storage" ]; then
     echo "  ✓ Symlink already exists"
 else
-    ln -s "$PROJECT_DIR/storage/app/public" "$PROJECT_DIR/public/storage"
-    echo "  ✓ storage/app/public → public/storage"
+    ln -sf "$PROJECT_DIR/storage/app/public" "$PROJECT_DIR/public/storage"
+    echo "  ✓ storage symlink created"
 fi
 echo ""
 
-# ── Step 6: Symlink public_html → sarh/public ───────────
-echo "▸ [6/8] Setting up public_html symlink..."
-if [ -L "$PUBLIC_HTML" ]; then
-    echo "  ✓ Symlink already exists"
-elif [ -d "$PUBLIC_HTML" ]; then
-    # Backup and remove existing public_html
-    echo "  → Removing existing public_html directory..."
-    rm -rf "$PUBLIC_HTML"
-    ln -s "$PROJECT_DIR/public" "$PUBLIC_HTML"
-    echo "  ✓ public_html → sarh/public"
-else
-    ln -s "$PROJECT_DIR/public" "$PUBLIC_HTML"
-    echo "  ✓ public_html → sarh/public"
-fi
+# ── Step 6: Deploy to domains/sarh.online/public_html ───
+echo "▸ [6/8] Deploying to domain public_html..."
+mkdir -p "$DOMAIN_PUBLIC"
+
+# Copy all public assets (JS, CSS, build, images, etc.)
+cp -r "$PROJECT_DIR/public/"* "$DOMAIN_PUBLIC/"
+cp "$PROJECT_DIR/public/.htaccess" "$DOMAIN_PUBLIC/" 2>/dev/null || true
+
+# *** CRITICAL: Overwrite index.php with bridge (absolute paths) ***
+# The cp above copies the default Laravel index.php with __DIR__ paths
+# which point to domains/sarh.online/ (wrong). We MUST overwrite it.
+cat > "$DOMAIN_PUBLIC/index.php" << 'BRIDGE'
+<?php
+
+use Illuminate\Http\Request;
+
+define('LARAVEL_START', microtime(true));
+
+// Maintenance mode
+if (file_exists($maintenance = '/home/u850419603/sarh/storage/framework/maintenance.php')) {
+    require $maintenance;
+}
+
+// Autoloader — absolute path to project
+require '/home/u850419603/sarh/vendor/autoload.php';
+
+// Bootstrap & handle request — absolute path to project
+(require_once '/home/u850419603/sarh/bootstrap/app.php')
+    ->handleRequest(Request::capture());
+BRIDGE
+
+# Storage link in domain public_html
+ln -sf "$PROJECT_DIR/storage/app/public" "$DOMAIN_PUBLIC/storage"
+
+# Permissions
+chmod 755 "$DOMAIN_PUBLIC"
+chmod 644 "$DOMAIN_PUBLIC/index.php"
+chmod 644 "$DOMAIN_PUBLIC/.htaccess" 2>/dev/null || true
+
+echo "  ✓ Files deployed to $DOMAIN_PUBLIC"
+echo "  ✓ Bridge index.php with absolute paths created"
 echo ""
 
 # ── Step 7: Clear Old Cache ─────────────────────────────
@@ -112,16 +137,18 @@ php artisan optimize:clear
 echo "  ✓ Old cache cleared"
 echo ""
 
-# ── Step 8: Optimize & Cache ────────────────────────────
+# ── Step 8: Cache config & routes (skip views — causes error) ─
 echo "▸ [8/8] Optimizing for production..."
-php artisan optimize
-echo "  ✓ Config, routes, and views cached"
+php artisan config:cache
+php artisan route:cache
+php artisan event:cache
+echo "  ✓ Config, routes, events cached (views NOT cached — intentional)"
 echo ""
 
 # ── Permissions Fix ──────────────────────────────────────
 echo "▸ Fixing permissions..."
 chmod -R 775 storage bootstrap/cache
-echo "  ✓ storage/ and bootstrap/cache/ set to 775"
+echo "  ✓ Permissions set"
 echo ""
 
 # ── Done ─────────────────────────────────────────────────
