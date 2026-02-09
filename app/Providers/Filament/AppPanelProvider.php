@@ -2,15 +2,15 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\App\Pages\EmployeeDashboard;
+use App\Filament\App\Widgets\EmployeeWelcomeWidget;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -19,42 +19,53 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /**
- * SARH v1.9.0 — لوحة الإدارة /admin
+ * SARH v1.9.0 — بوابة الموظفين /app
  *
- * متاحة فقط لـ security_level >= 4 أو is_super_admin.
- * تكتشف Resources/Pages/Widgets من مجلد Filament/ (بدون App/).
+ * بوابة مستقلة تماماً عن /admin، مخصصة للموظفين (security_level < 4).
+ * تكتشف Resources/Pages/Widgets من مجلد Filament/App/ فقط.
  */
-class AdminPanelProvider extends PanelProvider
+class AppPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->default()
-            ->id('admin')
-            ->path('admin')
+            ->id('app')
+            ->path('app')
             ->login()
-            ->brandName('صرح الإتقان')
+            ->passwordReset()
             ->colors([
-                'primary' => Color::Orange,
-                'danger'  => Color::Red,
+                'primary' => Color::Emerald,
+                'danger'  => Color::Rose,
                 'warning' => Color::Amber,
-                'success' => Color::Emerald,
+                'success' => Color::Green,
                 'info'    => Color::Sky,
+                'gray'    => Color::Zinc,
             ])
             ->font('Cairo')
+            ->brandName('سهر — بوابة الموظفين')
+            ->darkMode(true)
             ->sidebarCollapsibleOnDesktop()
             ->sidebarFullyCollapsibleOnDesktop()
             ->maxContentWidth('full')
-            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            ->discoverResources(
+                in: app_path('Filament/App/Resources'),
+                for: 'App\\Filament\\App\\Resources'
+            )
+            ->discoverPages(
+                in: app_path('Filament/App/Pages'),
+                for: 'App\\Filament\\App\\Pages'
+            )
+            ->discoverWidgets(
+                in: app_path('Filament/App/Widgets'),
+                for: 'App\\Filament\\App\\Widgets'
+            )
             ->pages([
-                Pages\Dashboard::class,
+                EmployeeDashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                Widgets\AccountWidget::class,
+                EmployeeWelcomeWidget::class,
             ])
+            ->authGuard('web')
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -70,6 +81,10 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->databaseNotifications()
-            ->spa();
+            ->spa()
+            ->renderHook(
+                'panels::body.end',
+                fn () => view('filament.app.partials.geolocation-script'),
+            );
     }
 }

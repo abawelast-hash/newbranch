@@ -18,16 +18,30 @@ class User extends Authenticatable implements FilamentUser
     use HasFactory, Notifiable, SoftDeletes;
 
     /**
-     * Determine if the user can access a Filament panel.
-     * Only active users with security_level >= 4 can access the admin panel.
+     * SARH v1.9.0 — Identity Isolation بين بوابة الإدارة وبوابة الموظفين.
+     *
+     * /admin → is_super_admin أو (security_level >= 4 + حساب مفعّل)
+     * /app   → security_level < 4 + حساب مفعّل (الموظفون العاديون فقط)
+     *
+     * ⚠️ لا يوجد overlap: المدير لن يُحوَّل لـ /app، والموظف لن يدخل /admin.
      */
     public function canAccessPanel(Panel $panel): bool
     {
+        $panelId = $panel->getId();
+
+        // super_admin يدخل /admin فقط — لا يُسمح له بالدخول لبوابة الموظفين
         if ($this->is_super_admin) {
-            return true;
+            return $panelId === 'admin';
         }
 
-        return $this->status === 'active' && $this->security_level >= 4;
+        $isActive = $this->status === 'active';
+        $level = (int) ($this->security_level ?? 1);
+
+        return match ($panelId) {
+            'admin' => $isActive && $level >= 4,
+            'app'   => $isActive && $level < 4,
+            default => false,
+        };
     }
 
     /*

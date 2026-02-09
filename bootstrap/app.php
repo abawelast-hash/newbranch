@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Without this, $request->isSecure() returns false behind HTTPS proxy,
         // causing CSRF token / session cookie mismatches → 419 errors.
         $middleware->trustProxies(at: '*');
+
+        // v1.9.0: إصلاح خطأ Permissions-Policy الذي ظهر في v1.8.x
+        // بدون هذا، المتصفح يرفض طلب navigator.geolocation.getCurrentPosition()
+        // مما يُعطّل تسجيل الحضور الجغرافي في بوابة الموظفين /app
+        $middleware->append(\App\Http\Middleware\SetPermissionsPolicy::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
