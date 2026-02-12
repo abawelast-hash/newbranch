@@ -6,7 +6,7 @@
  */
 @import '/vendor/filament/filament/resources/css/theme.css';
 
-@config '../../tailwind.config.js';
+@config '../../../../tailwind.config.js';
 
 :root {
     /* Corporate Orange */
