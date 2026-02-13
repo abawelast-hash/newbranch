@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\HasDashboardFilter;
 use App\Models\TrapInteraction;
 use App\Models\WhistleblowerReport;
 use Filament\Tables;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class IntegrityAlertHub extends BaseWidget
 {
+    use HasDashboardFilter;
+
     protected static ?string $heading = null;
 
     protected static ?int $sort = 3;
@@ -33,15 +36,18 @@ class IntegrityAlertHub extends BaseWidget
 
     public function getHeading(): string
     {
-        return __('command.integrity_hub_title');
+        return __('command.integrity_hub_title') . ' — ' . $this->getPeriodLabel();
     }
 
     public function table(Table $table): Table
     {
+        [$startDate, $endDate] = $this->getFilterDates();
+
         return $table
             ->query(
                 TrapInteraction::query()
                     ->with(['user', 'trap'])
+                    ->whereBetween('created_at', [$startDate, $endDate])
                     ->latest()
                     ->limit(15)
             )

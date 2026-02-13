@@ -2,27 +2,26 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\HasDashboardFilter;
 use App\Models\Branch;
 use App\Services\AnalyticsService;
+use Carbon\Carbon;
 use Filament\Widgets\Widget;
 
 class EfficiencyScoreCardWidget extends Widget
 {
+    use HasDashboardFilter;
+
     protected static string $view = 'filament.widgets.efficiency-score-card';
 
     protected int | string | array $columnSpan = 'full';
 
     protected static ?int $sort = 4;
 
-    public array $scores = [];
-
-    public function mount(): void
+    protected function getViewData(): array
     {
-        $this->loadScores();
-    }
+        [$startDate, $endDate] = $this->getFilterDates();
 
-    public function loadScores(): void
-    {
         $service  = app(AnalyticsService::class);
         $branches = Branch::where('is_active', true)->get();
         $scores   = [];
@@ -30,12 +29,12 @@ class EfficiencyScoreCardWidget extends Widget
         foreach ($branches as $branch) {
             $efficiency = $service->calculateEfficiencyScore(
                 $branch,
-                now()->startOfMonth(),
-                now()
+                $startDate,
+                $endDate
             );
 
             $vpm = $service->calculateVPM($branch);
-            $gap = $service->calculateProductivityGap($branch, now());
+            $gap = $service->calculateProductivityGap($branch, $endDate);
 
             $scores[] = [
                 'id'         => $branch->id,
@@ -48,15 +47,11 @@ class EfficiencyScoreCardWidget extends Widget
             ];
         }
 
-        // Sort by efficiency descending
         usort($scores, fn ($a, $b) => $b['efficiency'] <=> $a['efficiency']);
-        $this->scores = $scores;
-    }
 
-    protected function getViewData(): array
-    {
         return [
-            'scores' => $this->scores,
+            'scores'      => $scores,
+            'periodLabel' => $this->getPeriodLabel(),
         ];
     }
 }

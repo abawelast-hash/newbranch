@@ -2,13 +2,17 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\HasDashboardFilter;
 use App\Models\AnalyticsSnapshot;
 use App\Models\Branch;
 use App\Services\AnalyticsService;
+use Carbon\Carbon;
 use Filament\Widgets\Widget;
 
 class AttendanceHeatmapWidget extends Widget
 {
+    use HasDashboardFilter;
+
     protected static string $view = 'filament.widgets.attendance-heatmap';
 
     protected int | string | array $columnSpan = 'full';
@@ -26,34 +30,41 @@ class AttendanceHeatmapWidget extends Widget
             ->toArray();
 
         $this->selectedBranch = array_key_first($this->branches);
-        $this->loadHeatmap();
     }
 
     public function updatedSelectedBranch(): void
     {
-        $this->loadHeatmap();
-    }
-
-    public function loadHeatmap(): void
-    {
-        if (!$this->selectedBranch) return;
-
-        $branch = Branch::find($this->selectedBranch);
-        if (!$branch) return;
-
-        $service = app(AnalyticsService::class);
-        $this->heatmapData = $service->generateHeatmapData(
-            $branch,
-            now()->subDays(30),
-            now()
-        );
+        // Re-render will trigger getViewData() with new branch
     }
 
     protected function getViewData(): array
     {
+        if (!$this->selectedBranch) {
+            return [
+                'heatmap'     => [],
+                'branches'    => $this->branches,
+                'periodLabel' => $this->getPeriodLabel(),
+            ];
+        }
+
+        $branch = Branch::find($this->selectedBranch);
+        if (!$branch) {
+            return [
+                'heatmap'     => [],
+                'branches'    => $this->branches,
+                'periodLabel' => $this->getPeriodLabel(),
+            ];
+        }
+
+        [$startDate, $endDate] = $this->getFilterDates();
+
+        $service = app(AnalyticsService::class);
+        $heatmapData = $service->generateHeatmapData($branch, $startDate, $endDate);
+
         return [
-            'heatmap'  => $this->heatmapData,
-            'branches' => $this->branches,
+            'heatmap'     => $heatmapData,
+            'branches'    => $this->branches,
+            'periodLabel' => $this->getPeriodLabel(),
         ];
     }
 }

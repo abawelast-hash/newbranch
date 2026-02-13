@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\HasDashboardFilter;
 use App\Models\AttendanceLog;
 use App\Services\FinancialReportingService;
 use Carbon\Carbon;
@@ -10,6 +11,8 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class RealTimeLossCounter extends BaseWidget
 {
+    use HasDashboardFilter;
+
     protected static ?int $sort = 0;
 
     protected int|string|array $columnSpan = 'full';
@@ -18,40 +21,55 @@ class RealTimeLossCounter extends BaseWidget
 
     protected function getStats(): array
     {
+        [$startDate, $endDate] = $this->getFilterDates();
+        $startStr = $startDate->toDateString();
+        $endStr   = $endDate->toDateString();
+
         $service = app(FinancialReportingService::class);
-        $today = Carbon::today();
-        $yesterday = Carbon::yesterday();
 
-        $todayLoss = $service->getDailyLoss($today);
-        $yesterdayLoss = $service->getDailyLoss($yesterday);
+        // Sum loss across the filtered date range
+        $periodLoss = (float) AttendanceLog::whereBetween('attendance_date', [$startStr, $endStr])
+            ->sum('delay_cost');
 
-        $todayLogs = AttendanceLog::whereDate('attendance_date', $today);
-        $lateCount = (clone $todayLogs)->where('status', 'late')->count();
-        $absentCount = (clone $todayLogs)->where('status', 'absent')->count();
+        // Comparison: same duration in the previous period
+        $days         = $startDate->diffInDays($endDate) + 1;
+        $prevEnd      = $startDate->copy()->subDay();
+        $prevStart    = $prevEnd->copy()->subDays($days - 1);
+        $previousLoss = (float) AttendanceLog::whereBetween('attendance_date', [
+            $prevStart->toDateString(),
+            $prevEnd->toDateString(),
+        ])->sum('delay_cost');
 
-        // Calculate loss trend
-        $lossDiff = $todayLoss - $yesterdayLoss;
-        $trendDescription = $lossDiff >= 0
-            ? '+' . number_format(abs($lossDiff), 2) . ' ' . __('command.sar') . ' ' . __('command.vs_yesterday')
-            : '-' . number_format(abs($lossDiff), 2) . ' ' . __('command.sar') . ' ' . __('command.vs_yesterday');
+        $lossDiff = $periodLoss - $previousLoss;
+        $trendDescription = ($lossDiff >= 0 ? '+' : '-')
+            . number_format(abs($lossDiff), 2) . ' ' . __('command.sar')
+            . ' ' . __('dashboard.vs_previous_period');
 
-        // Predictive insight
+        // Counts for the filtered period
+        $logs        = AttendanceLog::whereBetween('attendance_date', [$startStr, $endStr]);
+        $lateCount   = (clone $logs)->where('status', 'late')->count();
+        $absentCount = (clone $logs)->where('status', 'absent')->count();
+
+        // Predictive (always based on current month)
         $predictive = $service->getPredictiveMonthlyLoss(Carbon::now());
+
+        $periodLabel = $this->getPeriodLabel();
 
         return [
             Stat::make(
                 __('command.today_total_loss'),
-                number_format($todayLoss, 2) . ' ' . __('command.sar')
+                number_format($periodLoss, 2) . ' ' . __('command.sar')
             )
                 ->description($trendDescription)
                 ->descriptionIcon($lossDiff >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($todayLoss > 0 ? 'danger' : 'success')
-                ->chart([$yesterdayLoss, $todayLoss]),
+                ->color($periodLoss > 0 ? 'danger' : 'success')
+                ->chart([$previousLoss, $periodLoss]),
 
             Stat::make(
                 __('command.today_late_count'),
                 $lateCount . ' ' . __('command.employees')
             )
+                ->description($periodLabel)
                 ->color($lateCount > 5 ? 'danger' : ($lateCount > 0 ? 'warning' : 'success'))
                 ->icon('heroicon-o-clock'),
 
@@ -59,6 +77,7 @@ class RealTimeLossCounter extends BaseWidget
                 __('command.today_absent_count'),
                 $absentCount . ' ' . __('command.employees')
             )
+                ->description($periodLabel)
                 ->color($absentCount > 3 ? 'danger' : ($absentCount > 0 ? 'warning' : 'success'))
                 ->icon('heroicon-o-x-circle'),
 
