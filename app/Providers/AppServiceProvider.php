@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -20,6 +21,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        /*
+        |----------------------------------------------------------------------
+        | Arabic Numeral Blade Directive: @arNum($value)
+        |----------------------------------------------------------------------
+        */
+        Blade::directive('arNum', function ($expression) {
+            return "<?php echo \App\Helpers\ArabicHelper::toArabicDigits($expression); ?>";
+        });
+
         /*
         |----------------------------------------------------------------------
         | Level 10 "God Mode" — Absolute Authority Gate

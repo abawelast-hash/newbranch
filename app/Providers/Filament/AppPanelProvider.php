@@ -113,6 +113,10 @@ class AppPanelProvider extends PanelProvider
                 fn () => new HtmlString('<link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#FF8C00">'),
             )
             ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn () => view('filament.components.arabic-numerals'),
+            )
+            ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn () => view('filament.components.pwa-install-button'),
             );
