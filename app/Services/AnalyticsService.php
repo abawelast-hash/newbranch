@@ -68,6 +68,40 @@ class AnalyticsService
 
     public function calculateTotalLoss(Branch $branch, Carbon $date): array
     {
+        // Skip weekends (Friday=5, Saturday=6) and holidays — no loss on non-working days
+        if (in_array($date->dayOfWeek, [Carbon::FRIDAY, Carbon::SATURDAY])) {
+            return [
+                'delay_losses'        => 0,
+                'absence_losses'      => 0,
+                'early_leave_losses'  => 0,
+                'total_losses'        => 0,
+                'absent_count'        => 0,
+                'present_count'       => 0,
+                'late_count'          => 0,
+                'total_delay_minutes' => 0,
+            ];
+        }
+
+        // Skip holidays
+        $isHoliday = Holiday::where('date', $date->toDateString())
+            ->where(function ($q) use ($branch) {
+                $q->whereNull('branch_id')->orWhere('branch_id', $branch->id);
+            })
+            ->exists();
+
+        if ($isHoliday) {
+            return [
+                'delay_losses'        => 0,
+                'absence_losses'      => 0,
+                'early_leave_losses'  => 0,
+                'total_losses'        => 0,
+                'absent_count'        => 0,
+                'present_count'       => 0,
+                'late_count'          => 0,
+                'total_delay_minutes' => 0,
+            ];
+        }
+
         $logs = AttendanceLog::where('branch_id', $branch->id)
             ->whereDate('attendance_date', $date)
             ->get();
