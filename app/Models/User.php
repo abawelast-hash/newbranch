@@ -370,70 +370,221 @@ class User extends Authenticatable implements FilamentUser
 
     /*
     |--------------------------------------------------------------------------
-    | RBAC HELPERS
+    | RBAC HELPERS — صلاحيات فردية بحتة (v4.1)
     |--------------------------------------------------------------------------
+    |
+    | المصدر الوحيد للصلاحيات: جدول user_permissions
+    | الأدوار فخرية فقط — لا تؤثر على الصلاحيات
+    |
+    | الأولوية:
+    |   1. super_admin / security_level 10 → true دائمًا
+    |   2. revoke نشط → false (حظر صريح)
+    |   3. grant نشط → true (تصريح صريح)
+    |   4. تبعيات ذكية — صلاحية تمنح أخرى ضمنيًا
+    |   5. القيمة الافتراضية → false (ممنوع)
+    |
     */
 
     /**
-     * Check if user has a specific permission via their role + direct overrides.
-     *
-     * Priority Order:
-     * 1. Super Admin → always true
-     * 2. Direct 'revoke' override → false (explicit denial)
-     * 3. Direct 'grant' override → true (explicit grant)
-     * 4. Role permission → check role's permissions
+     * خريطة التبعيات الذكية: صلاحية → صلاحيات ضمنية.
+     * مثلاً: إذا عندك create_user تلقائيًا تقدر تشوف المستخدمين.
+     * المصفوفة مسطّحة بالكامل (لا حاجة لتتبع متعدي).
      */
-    public function hasPermission(string $slug): bool
+    protected static array $permissionImplies = [
+        // ── Attendance hierarchy ──
+        'attendance.view_all'     => ['attendance.view_branch', 'attendance.view_team', 'attendance.view_own'],
+        'attendance.view_branch'  => ['attendance.view_team', 'attendance.view_own'],
+        'attendance.view_team'    => ['attendance.view_own'],
+        'attendance.manual_entry' => ['attendance.view_own'],
+        'attendance.approve'      => ['attendance.view_team', 'attendance.view_own'],
+        'attendance.export'       => ['attendance.view_own'],
+
+        // ── Finance hierarchy ──
+        'finance.view_all'          => ['finance.view_branch', 'finance.view_team', 'finance.view_own'],
+        'finance.view_branch'       => ['finance.view_team', 'finance.view_own'],
+        'finance.view_team'         => ['finance.view_own'],
+        'finance.manage_salaries'   => ['finance.view_all', 'finance.view_branch', 'finance.view_team', 'finance.view_own', 'finance.dashboard'],
+        'finance.generate_reports'  => ['finance.view_own', 'finance.dashboard'],
+        'finance.dashboard'         => ['finance.view_own'],
+
+        // ── Users CRUD ──
+        'users.create'       => ['users.view'],
+        'users.edit'         => ['users.view'],
+        'users.delete'       => ['users.view'],
+        'users.manage_roles' => ['users.view'],
+
+        // ── Branches CRUD ──
+        'branches.create' => ['branches.view'],
+        'branches.edit'   => ['branches.view'],
+        'branches.delete' => ['branches.view'],
+
+        // ── Leaves ──
+        'leaves.approve'  => ['leaves.view_all', 'leaves.request'],
+        'leaves.view_all' => ['leaves.request'],
+
+        // ── Whistleblower ──
+        'whistleblower.investigate' => ['whistleblower.view', 'whistleblower.submit'],
+        'whistleblower.view'        => ['whistleblower.submit'],
+
+        // ── Traps ──
+        'traps.manage' => ['traps.view'],
+
+        // ── Messaging ──
+        'messaging.broadcast' => ['messaging.chat'],
+        'messaging.circulars' => ['messaging.chat'],
+
+        // ── Gamification ──
+        'gamification.manage'   => ['gamification.view_all', 'gamification.view_own'],
+        'gamification.view_all' => ['gamification.view_own'],
+
+        // ── System ──
+        'system.settings' => ['system.audit_logs', 'system.manage_holidays'],
+    ];
+
+    /**
+     * كاش مؤقت لصلاحيات الطلب الحالي (تفادي N+1).
+     */
+    private ?\Illuminate\Support\Collection $cachedActivePermissions = null;
+
+    /**
+     * تحميل كل صلاحيات المستخدم النشطة (مرة واحدة في الطلب).
+     */
+    private function loadActivePermissions(): \Illuminate\Support\Collection
     {
-        if ($this->is_super_admin) {
-            return true;
+        if ($this->cachedActivePermissions === null) {
+            $this->cachedActivePermissions = $this->userPermissions()
+                ->active()
+                ->with('permission')
+                ->get();
         }
 
-        // Check for direct user-level overrides (active, non-expired)
-        $override = $this->userPermissions()
-            ->whereHas('permission', fn ($q) => $q->where('slug', $slug))
-            ->active()
-            ->first();
-
-        if ($override) {
-            return $override->type === 'grant';
-        }
-
-        // Fallback to role permission
-        return $this->role
-            && $this->role->permissions()->where('slug', $slug)->exists();
+        return $this->cachedActivePermissions;
     }
 
     /**
-     * Get all effective permissions for this user (role + direct grants - revocations).
+     * مسح الكاش (يُستدعى بعد تعديل الصلاحيات).
+     */
+    public function flushPermissionCache(): void
+    {
+        $this->cachedActivePermissions = null;
+    }
+
+    /**
+     * التحقق من صلاحية محددة — المصدر الوحيد: UserPermission.
+     */
+    public function hasPermission(string $slug): bool
+    {
+        // 1. المدير العام يتجاوز كل شيء
+        if ($this->is_super_admin || $this->security_level === 10) {
+            return true;
+        }
+
+        $activePermissions = $this->loadActivePermissions();
+
+        // 2. حظر صريح (revoke) يتجاوز كل شيء
+        $isRevoked = $activePermissions
+            ->where('type', 'revoke')
+            ->contains(fn ($up) => $up->permission && $up->permission->slug === $slug);
+
+        if ($isRevoked) {
+            return false;
+        }
+
+        // 3. تصريح صريح (grant)
+        $isGranted = $activePermissions
+            ->where('type', 'grant')
+            ->contains(fn ($up) => $up->permission && $up->permission->slug === $slug);
+
+        if ($isGranted) {
+            return true;
+        }
+
+        // 4. تبعيات ذكية: هل صلاحية ممنوحة تتضمن هذه الصلاحية ضمنيًا؟
+        return $this->isImpliedByGrantedPermissions($slug, $activePermissions);
+    }
+
+    /**
+     * تحقق إذا كانت صلاحية مطلوبة مضمّنة ضمنيًا في صلاحية ممنوحة.
+     */
+    private function isImpliedByGrantedPermissions(string $slug, \Illuminate\Support\Collection $activePermissions): bool
+    {
+        $grantedSlugs = $activePermissions
+            ->where('type', 'grant')
+            ->pluck('permission.slug')
+            ->filter()
+            ->toArray();
+
+        foreach ($grantedSlugs as $grantedSlug) {
+            $implied = static::$permissionImplies[$grantedSlug] ?? [];
+            if (in_array($slug, $implied, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * هل عند المستخدم أي من هذه الصلاحيات؟
+     */
+    public function hasAnyPermission(array $slugs): bool
+    {
+        foreach ($slugs as $slug) {
+            if ($this->hasPermission($slug)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * كل الصلاحيات الفعلية (للعرض في الواجهة).
      */
     public function getEffectivePermissions(): \Illuminate\Support\Collection
     {
-        if ($this->is_super_admin) {
+        if ($this->is_super_admin || $this->security_level === 10) {
             return Permission::all();
         }
 
-        // Role permissions
-        $rolePermissions = $this->role
-            ? $this->role->permissions()->pluck('permissions.id')
+        $activePermissions = $this->loadActivePermissions();
+
+        // الصلاحيات الممنوحة صراحة
+        $grantedIds = $activePermissions
+            ->where('type', 'grant')
+            ->pluck('permission_id')
+            ->unique();
+
+        // الصلاحيات المسحوبة صراحة
+        $revokedIds = $activePermissions
+            ->where('type', 'revoke')
+            ->pluck('permission_id')
+            ->unique();
+
+        // الصلاحيات الضمنية من خريطة التبعيات
+        $grantedSlugs = $activePermissions
+            ->where('type', 'grant')
+            ->pluck('permission.slug')
+            ->filter()
+            ->toArray();
+
+        $impliedSlugs = [];
+        foreach ($grantedSlugs as $grantedSlug) {
+            $implied = static::$permissionImplies[$grantedSlug] ?? [];
+            $impliedSlugs = array_merge($impliedSlugs, $implied);
+        }
+        $impliedSlugs = array_unique($impliedSlugs);
+
+        $impliedIds = !empty($impliedSlugs)
+            ? Permission::whereIn('slug', $impliedSlugs)->pluck('id')
             : collect();
 
-        // Direct grants (active)
-        $grantedIds = $this->userPermissions()
-            ->active()
-            ->grants()
-            ->pluck('permission_id');
-
-        // Direct revocations (active)
-        $revokedIds = $this->userPermissions()
-            ->active()
-            ->revocations()
-            ->pluck('permission_id');
-
-        $effectiveIds = $rolePermissions
-            ->merge($grantedIds)
+        // الفعلية = (الممنوحة + الضمنية) - المسحوبة
+        $effectiveIds = $grantedIds
+            ->merge($impliedIds)
             ->diff($revokedIds)
-            ->unique();
+            ->unique()
+            ->values();
 
         return Permission::whereIn('id', $effectiveIds)->get();
     }

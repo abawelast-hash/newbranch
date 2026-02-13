@@ -13,9 +13,11 @@ use Filament\Tables\Table;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * SARH v1.9.0 — Module 2: إدارة الأدوار والصلاحيات (RBAC)
+ * SARH v4.1 — الأدوار فخرية فقط
  *
- * واجهة كاملة للمالك (Level 10) لإنشاء أدوار مخصصة وتبديل الصلاحيات.
+ * الأدوار لا تؤثر على الصلاحيات الفعلية.
+ * الصلاحيات تُدار فرديًا عبر UserPermission في صفحة تعديل المستخدم.
+ * الدور مجرد مسمى وظيفي / تصنيفي.
  */
 class RoleResource extends Resource
 {
@@ -32,7 +34,7 @@ class RoleResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'الأدوار';
+        return 'الأدوار (فخرية)';
     }
 
     public static function getModelLabel(): string
@@ -64,6 +66,12 @@ class RoleResource extends Resource
         $permissionGroups = Permission::all()->groupBy('group');
 
         return $form->schema([
+            Forms\Components\Section::make('⚠️ الأدوار فخرية فقط')
+                ->description('تعيين الدور لا يمنح صلاحيات تلقائيًا. الصلاحيات تُدار فرديًا من صفحة تعديل الموظف ← تبويب "الصلاحيات الفردية".')
+                ->icon('heroicon-o-exclamation-triangle')
+                ->collapsed(false)
+                ->schema([]),
+
             Forms\Components\Section::make('بيانات الدور')
                 ->description('تعريف الدور ومستوى الأمان')
                 ->schema([
@@ -123,9 +131,11 @@ class RoleResource extends Resource
                         ->hintIcon('heroicon-m-information-circle', tooltip: __('users.role_is_system_hint')),
                 ])->columns(['default' => 1, 'lg' => 2]),
 
-            // ── Permission Matrix ──
-            Forms\Components\Section::make('مصفوفة الصلاحيات')
-                ->description('اختر الصلاحيات الممنوحة لهذا الدور')
+            // ── Permission Matrix (reference only — does NOT grant permissions) ──
+            Forms\Components\Section::make('مصفوفة الصلاحيات (مرجعية فقط)')
+                ->description('⚠️ هذه الصلاحيات مرجعية فقط ولا تُمنح تلقائيًا للمستخدمين. لمنح صلاحيات فعلية، استخدم تبويب "الصلاحيات الفردية" في صفحة تعديل الموظف.')
+                ->icon('heroicon-o-eye')
+                ->collapsed(true)
                 ->schema([
                     Forms\Components\CheckboxList::make('permissions')
                         ->label('')

@@ -169,10 +169,11 @@ class UserResource extends Resource
                         ->hintIcon('heroicon-m-information-circle', tooltip: __('users.department_hint')),
 
                     Forms\Components\Select::make('role_id')
-                        ->label(__('users.role'))
+                        ->label(__('users.role') . ' (فخري)')
                         ->relationship('role', 'name_ar')
                         ->searchable()
                         ->preload()
+                        ->helperText('⚠️ الدور فخري فقط — الصلاحيات تُدار من تبويب "الصلاحيات الفردية"')
                         ->hintIcon('heroicon-m-information-circle', tooltip: __('users.role_hint')),
 
                     Forms\Components\Select::make('direct_manager_id')
@@ -508,7 +509,9 @@ class UserResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            \App\Filament\Resources\UserResource\RelationManagers\PermissionsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
