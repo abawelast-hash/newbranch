@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\AttendanceLog;
+use App\Models\WhistleblowerReport;
 use App\Services\AttendanceService;
 use App\Services\GeofencingService;
 use Illuminate\Support\Facades\Auth;
@@ -14,11 +15,23 @@ class AttendanceWidget extends Component
     public ?string $checkInTime = null;
     public ?string $checkOutTime = null;
     public bool $isInsideGeofence = false;
+    public float $distanceMeters = 0;
+    public float $geofenceRadius = 0;
     public string $message = '';
+    public string $messageType = ''; // success | error
+
+    // Whistleblower form
+    public bool $showWhistleblowerForm = false;
+    public string $wbCategory = '';
+    public string $wbSeverity = 'medium';
+    public string $wbContent = '';
+    public ?string $wbTicket = null;
+    public ?string $wbToken = null;
 
     public function mount(): void
     {
         $this->loadTodayStatus();
+        $this->loadGeofenceInfo();
     }
 
     public function loadTodayStatus(): void
@@ -37,6 +50,26 @@ class AttendanceWidget extends Component
         }
     }
 
+    public function loadGeofenceInfo(): void
+    {
+        $user = Auth::user();
+        if ($user->branch) {
+            $this->geofenceRadius = (float) $user->branch->geofence_radius;
+        }
+    }
+
+    public function updateGeolocation(float $latitude, float $longitude): void
+    {
+        $user = Auth::user();
+        if (!$user->branch) {
+            return;
+        }
+
+        $geo = (new GeofencingService())->validatePosition($user->branch, $latitude, $longitude);
+        $this->distanceMeters = round($geo['distance_meters']);
+        $this->isInsideGeofence = $geo['within_geofence'];
+    }
+
     public function checkIn(float $latitude, float $longitude): void
     {
         try {
@@ -45,8 +78,10 @@ class AttendanceWidget extends Component
             $this->checkInTime = $log->check_in_at->format('H:i');
             $this->status = 'checked_in';
             $this->message = __('pwa.check_in_success');
+            $this->messageType = 'success';
         } catch (\Exception $e) {
             $this->message = $e->getMessage();
+            $this->messageType = 'error';
         }
     }
 
@@ -58,9 +93,49 @@ class AttendanceWidget extends Component
             $this->checkOutTime = $log->check_out_at->format('H:i');
             $this->status = 'checked_out';
             $this->message = __('pwa.check_out_success');
+            $this->messageType = 'success';
         } catch (\Exception $e) {
             $this->message = $e->getMessage();
+            $this->messageType = 'error';
         }
+    }
+
+    public function toggleWhistleblowerForm(): void
+    {
+        $this->showWhistleblowerForm = !$this->showWhistleblowerForm;
+        $this->wbTicket = null;
+        $this->wbToken = null;
+    }
+
+    public function submitWhistleblowerReport(): void
+    {
+        $this->validate([
+            'wbCategory' => 'required|in:fraud,corruption,harassment,safety,discrimination,other',
+            'wbSeverity' => 'required|in:low,medium,high,critical',
+            'wbContent'  => 'required|min:20',
+        ]);
+
+        $ticket = WhistleblowerReport::generateTicketNumber();
+        $token  = WhistleblowerReport::generateAnonymousToken();
+
+        $report = WhistleblowerReport::create([
+            'ticket_number'   => $ticket,
+            'category'        => $this->wbCategory,
+            'severity'        => $this->wbSeverity,
+            'status'          => 'new',
+            'anonymous_token' => hash('sha256', $token),
+        ]);
+
+        $report->setContent($this->wbContent);
+        $report->save();
+
+        $this->wbTicket = $ticket;
+        $this->wbToken  = $token;
+
+        // Reset form fields
+        $this->wbCategory = '';
+        $this->wbSeverity = 'medium';
+        $this->wbContent = '';
     }
 
     public function render()
