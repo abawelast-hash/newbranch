@@ -1,13 +1,4 @@
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
-    {{-- Leaflet CSS —  loaded in <head> via @push or inline --}}
-    @once
-        @push('styles')
-            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-                  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-                  crossorigin="" />
-        @endpush
-    @endonce
-
     <div
         x-data="{
             lat: $wire.entangle('data.latitude'),
@@ -18,13 +9,12 @@
             circle: null,
             loaded: false,
             error: false,
+            mapReady: false,
 
             loadLeaflet() {
                 return new Promise((resolve, reject) => {
-                    // Check if already loaded
                     if (window.L) { resolve(); return; }
 
-                    // Load CSS
                     if (!document.querySelector('link[href*=\"leaflet\"]')) {
                         const css = document.createElement('link');
                         css.rel = 'stylesheet';
@@ -32,7 +22,6 @@
                         document.head.appendChild(css);
                     }
 
-                    // Load JS
                     const js = document.createElement('script');
                     js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
                     js.onload = () => resolve();
@@ -41,89 +30,135 @@
                 });
             },
 
+            forceResize() {
+                if (!this.map) return;
+                this.map.invalidateSize();
+                setTimeout(() => this.map?.invalidateSize(), 100);
+                setTimeout(() => this.map?.invalidateSize(), 300);
+                setTimeout(() => this.map?.invalidateSize(), 600);
+                setTimeout(() => {
+                    if (this.map) {
+                        this.map.invalidateSize();
+                        if (this.marker) this.map.panTo(this.marker.getLatLng());
+                    }
+                }, 1000);
+            },
+
+            initMap() {
+                if (this.mapReady) return;
+                const container = this.$refs.map;
+                if (!container || container.offsetHeight < 10) return;
+
+                this.mapReady = true;
+                const defaultLat = parseFloat(this.lat) || 24.7136;
+                const defaultLng = parseFloat(this.lng) || 46.6753;
+                const defaultRadius = parseInt(this.radius) || 100;
+
+                this.map = L.map(container, {
+                    center: [defaultLat, defaultLng],
+                    zoom: 15,
+                    scrollWheelZoom: true,
+                    tap: true,
+                    dragging: true,
+                    touchZoom: true,
+                    zoomControl: true,
+                });
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap',
+                    maxZoom: 19,
+                }).addTo(this.map);
+
+                this.marker = L.marker([defaultLat, defaultLng], {
+                    draggable: true,
+                }).addTo(this.map);
+
+                this.circle = L.circle([defaultLat, defaultLng], {
+                    radius: defaultRadius,
+                    color: '#FF8C00',
+                    fillColor: '#FF8C00',
+                    fillOpacity: 0.12,
+                    weight: 2,
+                }).addTo(this.map);
+
+                this.marker.on('dragend', (e) => {
+                    const pos = e.target.getLatLng();
+                    this.lat = parseFloat(pos.lat.toFixed(7));
+                    this.lng = parseFloat(pos.lng.toFixed(7));
+                    this.circle.setLatLng(pos);
+                });
+
+                this.map.on('click', (e) => {
+                    this.lat = parseFloat(e.latlng.lat.toFixed(7));
+                    this.lng = parseFloat(e.latlng.lng.toFixed(7));
+                    this.marker.setLatLng(e.latlng);
+                    this.circle.setLatLng(e.latlng);
+                });
+
+                this.$watch('radius', (val) => {
+                    if (this.circle && val) this.circle.setRadius(parseInt(val));
+                });
+
+                this.$watch('lat', (val) => {
+                    if (this.marker && val && this.lng) {
+                        const latlng = L.latLng(parseFloat(val), parseFloat(this.lng));
+                        this.marker.setLatLng(latlng);
+                        this.circle.setLatLng(latlng);
+                        this.map.panTo(latlng);
+                    }
+                });
+
+                this.$watch('lng', (val) => {
+                    if (this.marker && val && this.lat) {
+                        const latlng = L.latLng(parseFloat(this.lat), parseFloat(val));
+                        this.marker.setLatLng(latlng);
+                        this.circle.setLatLng(latlng);
+                        this.map.panTo(latlng);
+                    }
+                });
+
+                this.forceResize();
+            },
+
             async init() {
                 try {
                     await this.loadLeaflet();
                     this.loaded = true;
 
                     this.$nextTick(() => {
-                        const defaultLat = parseFloat(this.lat) || 24.7136;
-                        const defaultLng = parseFloat(this.lng) || 46.6753;
-                        const defaultRadius = parseInt(this.radius) || 100;
+                        this.initMap();
 
-                        this.map = L.map(this.$refs.map, {
-                            center: [defaultLat, defaultLng],
-                            zoom: 15,
-                            scrollWheelZoom: true,
-                            tap: true,
-                            dragging: true,
-                            touchZoom: true,
-                            zoomControl: true,
-                        });
+                        // IntersectionObserver: initialize map when container becomes visible
+                        const observer = new IntersectionObserver((entries) => {
+                            entries.forEach(entry => {
+                                if (entry.isIntersecting) {
+                                    this.initMap();
+                                    this.forceResize();
+                                }
+                            });
+                        }, { threshold: 0.1 });
+                        observer.observe(this.$refs.map);
 
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                            attribution: '&copy; OpenStreetMap',
-                            maxZoom: 19,
-                        }).addTo(this.map);
-
-                        this.marker = L.marker([defaultLat, defaultLng], {
-                            draggable: true,
-                        }).addTo(this.map);
-
-                        this.circle = L.circle([defaultLat, defaultLng], {
-                            radius: defaultRadius,
-                            color: '#FF8C00',
-                            fillColor: '#FF8C00',
-                            fillOpacity: 0.12,
-                            weight: 2,
-                        }).addTo(this.map);
-
-                        this.marker.on('dragend', (e) => {
-                            const pos = e.target.getLatLng();
-                            this.lat = parseFloat(pos.lat.toFixed(7));
-                            this.lng = parseFloat(pos.lng.toFixed(7));
-                            this.circle.setLatLng(pos);
-                        });
-
-                        this.map.on('click', (e) => {
-                            this.lat = parseFloat(e.latlng.lat.toFixed(7));
-                            this.lng = parseFloat(e.latlng.lng.toFixed(7));
-                            this.marker.setLatLng(e.latlng);
-                            this.circle.setLatLng(e.latlng);
-                        });
-
-                        this.$watch('radius', (val) => {
-                            if (this.circle && val) this.circle.setRadius(parseInt(val));
-                        });
-
-                        this.$watch('lat', (val) => {
-                            if (this.marker && val && this.lng) {
-                                const latlng = L.latLng(parseFloat(val), parseFloat(this.lng));
-                                this.marker.setLatLng(latlng);
-                                this.circle.setLatLng(latlng);
-                                this.map.panTo(latlng);
-                            }
-                        });
-
-                        this.$watch('lng', (val) => {
-                            if (this.marker && val && this.lat) {
-                                const latlng = L.latLng(parseFloat(this.lat), parseFloat(val));
-                                this.marker.setLatLng(latlng);
-                                this.circle.setLatLng(latlng);
-                                this.map.panTo(latlng);
-                            }
-                        });
-
-                        // Force resize after render
-                        setTimeout(() => this.map.invalidateSize(), 300);
-                        setTimeout(() => this.map.invalidateSize(), 1000);
-
-                        // Also invalidate on Filament section expand
+                        // MutationObserver: catch Filament section expand/collapse
                         const section = this.$el.closest('.fi-section');
                         if (section) {
                             new MutationObserver(() => {
-                                setTimeout(() => this.map?.invalidateSize(), 200);
-                            }).observe(section, { attributes: true, childList: true });
+                                setTimeout(() => {
+                                    this.initMap();
+                                    this.forceResize();
+                                }, 200);
+                            }).observe(section, { attributes: true, childList: true, subtree: true });
+                        }
+
+                        // Also watch parent tabs/steps
+                        const tabPanel = this.$el.closest('[role=\"tabpanel\"], .fi-fo-tabs, .fi-fo-wizard-step');
+                        if (tabPanel) {
+                            new MutationObserver(() => {
+                                setTimeout(() => {
+                                    this.initMap();
+                                    this.forceResize();
+                                }, 300);
+                            }).observe(tabPanel.parentElement, { attributes: true, childList: true, subtree: true });
                         }
                     });
                 } catch (e) {
@@ -172,8 +207,17 @@
             style="height: 350px; min-height: 250px; z-index: 1;"
         ></div>
 
-        <p x-show="loaded" class="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
-            📍 اضغط على الخريطة أو اسحب المؤشر لتحديد الموقع
-        </p>
+        {{-- Refresh map button --}}
+        <div x-show="loaded && !error" class="mt-2 flex items-center justify-center gap-3">
+            <button type="button"
+                    @click="forceResize()"
+                    class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                تحديث الخريطة
+            </button>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+                📍 اضغط على الخريطة أو اسحب المؤشر لتحديد الموقع
+            </p>
+        </div>
     </div>
 </x-dynamic-component>
