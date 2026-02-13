@@ -76,7 +76,7 @@ class AttendanceExceptionResource extends Resource
                         ->native(false)
                         ->live()
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'نوع الاستثناء يحدد القواعد المُطبَّقة على الموظف'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
 
             Forms\Components\Section::make('إعدادات الدوام المخصص')
                 ->description('تجاوز ساعات الدوام الرسمية لهذا الموظف')
@@ -98,7 +98,7 @@ class AttendanceExceptionResource extends Resource
                         ->minValue(0)
                         ->maxValue(120)
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'عدد الدقائق المسموحة بعد بداية الدوام'),
-                ])->columns(3),
+                ])->columns(['default' => 1, 'lg' => 3]),
 
             Forms\Components\Section::make('التجاوزات')
                 ->schema([
@@ -117,7 +117,7 @@ class AttendanceExceptionResource extends Resource
                         ->label('مفعّل')
                         ->default(true)
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'هل هذا الاستثناء نشط حالياً'),
-                ])->columns(3),
+                ])->columns(['default' => 1, 'lg' => 3]),
 
             Forms\Components\Section::make('الفترة والسبب')
                 ->schema([
@@ -140,7 +140,7 @@ class AttendanceExceptionResource extends Resource
 
                     Forms\Components\Hidden::make('approved_by')
                         ->default(fn () => auth()->id()),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
         ]);
     }
 

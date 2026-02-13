@@ -94,7 +94,7 @@ class DemoDataGenerator extends Page implements HasForms
                             ->native(false)
                             ->afterOrEqual('date_from')
                             ->hintIcon('heroicon-m-information-circle', tooltip: 'آخر يوم سيتم توليد بيانات حضور له'),
-                    ])->columns(2),
+                    ])->columns(['default' => 1, 'lg' => 2]),
 
                 // ── Section 2: Branch Selector ────────────────────────
                 Forms\Components\Section::make('اختيار الفروع')
@@ -104,7 +104,7 @@ class DemoDataGenerator extends Page implements HasForms
                         Forms\Components\CheckboxList::make('branch_ids')
                             ->label('الفروع')
                             ->options(Branch::where('is_active', true)->pluck('name_ar', 'id'))
-                            ->columns(3)
+                            ->columns(['default' => 1, 'lg' => 3])
                             ->bulkToggleable()
                             ->searchable()
                             ->hintIcon('heroicon-m-information-circle', tooltip: 'اتركها فارغة لتشمل جميع الفروع النشطة'),
@@ -126,7 +126,7 @@ class DemoDataGenerator extends Page implements HasForms
                             ->label('نهاية الدوام')
                             ->seconds(false)
                             ->hintIcon('heroicon-m-information-circle', tooltip: 'الوقت الرسمي لنهاية الدوام — يُستخدم لحساب ساعات العمل'),
-                    ])->columns(2),
+                    ])->columns(['default' => 1, 'lg' => 2]),
 
                 // ── Section 4: Weekend Selector ───────────────────────
                 Forms\Components\Section::make('أيام العطلة')
@@ -146,7 +146,7 @@ class DemoDataGenerator extends Page implements HasForms
                                 5 => 'الجمعة',
                                 6 => 'السبت',
                             ])
-                            ->columns(7)
+                            ->columns(['default' => 3, 'lg' => 7])
                             ->hintIcon('heroicon-m-information-circle', tooltip: 'لن يتم توليد سجلات حضور لهذه الأيام'),
                     ]),
 

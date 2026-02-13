@@ -7,7 +7,9 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    // Navigation    'navigation_group'   => 'الحضور',    'navigation_label'   => 'سجل الحضور',
+    // Navigation
+    'navigation_group'   => 'الحضور',
+    'navigation_label'   => 'سجل الحضور',
     'model_label'        => 'سجل حضور',
     'plural_model_label' => 'سجلات الحضور',
 

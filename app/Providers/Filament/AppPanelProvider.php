@@ -11,12 +11,15 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Models\Setting;
 
 /**
  * SARH v1.9.0 — بوابة الموظفين /app
@@ -58,7 +61,10 @@ class AppPanelProvider extends PanelProvider
             ])
             ->font('Cairo')
             ->viteTheme('resources/css/filament/app/theme.css')
-            ->brandName('سهر — بوابة الموظفين')
+            ->brandName(fn () => Setting::instance()->app_name . ' — بوابة الموظفين')
+            ->brandLogo(fn () => Setting::instance()->logo_url)
+            ->brandLogoHeight('2.5rem')
+            ->favicon(fn () => Setting::instance()->favicon_url)
             ->darkMode(true)
             ->sidebarCollapsibleOnDesktop()
             ->sidebarFullyCollapsibleOnDesktop()
@@ -99,8 +105,16 @@ class AppPanelProvider extends PanelProvider
             ->databaseNotifications()
             ->spa()
             ->renderHook(
-                'panels::body.end',
+                PanelsRenderHook::BODY_END,
                 fn () => view('filament.app.partials.geolocation-script'),
+            )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn () => new HtmlString('<link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#FF8C00">'),
+            )
+            ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn () => view('filament.components.pwa-install-button'),
             );
     }
 }

@@ -81,7 +81,7 @@ class ReportFormulaResource extends Resource
                         ->label('مفعّلة')
                         ->default(true)
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'هل هذه الصيغة نشطة ومتاحة للاستخدام'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
 
             Forms\Components\Section::make('الصيغة الحسابية')
                 ->description('اكتب الصيغة باستخدام المتغيرات المتاحة. مثال: (attendance * 0.4) + (on_time_rate * 0.3) + (total_points * 0.003)')
@@ -101,7 +101,7 @@ class ReportFormulaResource extends Resource
                             $label = is_array($desc) ? ($desc['ar'] ?? $key) : $desc;
                             return [$key => "{$key} — {$label}"];
                         })->toArray())
-                        ->columns(3)
+                        ->columns(['default' => 1, 'lg' => 3])
                         ->helperText('اختر المتغيرات التي تستخدمها في الصيغة')
                         ->columnSpanFull()
                         ->dehydrateStateUsing(function (array $state) use ($availableVars) {
@@ -126,7 +126,7 @@ class ReportFormulaResource extends Resource
                         ->label('الوصف بالإنجليزية')
                         ->rows(2)
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'وصف مختصر لهذه الصيغة بالإنجليزية'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
 
             Forms\Components\Hidden::make('created_by')
                 ->default(fn () => auth()->id()),

@@ -11,12 +11,15 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Widgets;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Models\Setting;
 
 /**
  * SARH v1.9.0 — لوحة الإدارة /admin
@@ -36,7 +39,10 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->brandName('صرح الإتقان')
+            ->brandName(fn () => Setting::instance()->app_name)
+            ->brandLogo(fn () => Setting::instance()->logo_url)
+            ->brandLogoHeight('2.5rem')
+            ->favicon(fn () => Setting::instance()->favicon_url)
             ->colors([
                 // Module 5: Corporate Orange Palette
                 'primary' => [
@@ -100,6 +106,14 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->databaseNotifications()
-            ->spa();
+            ->spa()
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn () => new HtmlString('<link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#FF8C00">'),
+            )
+            ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                fn () => view('filament.components.pwa-install-button'),
+            );
     }
 }

@@ -99,7 +99,7 @@ class TrapInteractionResource extends Resource
                         ->disabled()
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'مستوى الخطورة: يحدد مدى أهمية هذا التفاعل الأمني')
                         ->label(__('traps.risk_level')),
-                ])->columns(3),
+                ])->columns(['default' => 1, 'lg' => 3]),
 
             Forms\Components\Section::make(__('traps.review_section'))
                 ->schema([

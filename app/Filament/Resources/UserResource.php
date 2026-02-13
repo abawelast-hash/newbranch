@@ -111,7 +111,7 @@ class UserResource extends Resource
                         ->required(fn (string $operation): bool => $operation === 'create')
                         ->maxLength(255)
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'كلمة المرور لتسجيل الدخول — يجب ألا تقل عن 8 أحرف'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
 
             // ── Section 3: Financial (Basic Salary — Core for cost-per-minute) ──
             Forms\Components\Section::make(__('users.financial_section'))
@@ -146,7 +146,7 @@ class UserResource extends Resource
                         ->default(0)
                         ->prefix(__('users.currency_sar'))
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'أي بدلات إضافية مثل بدل الهاتف أو الطعام'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
 
             // ── Section 4: Organizational (Optional, with smart defaults) ──
             Forms\Components\Section::make(__('users.organization_section'))
@@ -212,7 +212,7 @@ class UserResource extends Resource
                         ])
                         ->default('full_time')
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'نوع العقد الوظيفي — يحدد سياسات الدوام والإجازات'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
 
             // ── Hidden/Auto Defaults ──────────────────────────────
             Forms\Components\Hidden::make('working_days_per_month')

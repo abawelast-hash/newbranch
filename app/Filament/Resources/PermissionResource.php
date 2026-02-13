@@ -95,7 +95,7 @@ class PermissionResource extends Resource
                         ->rows(2)
                         ->columnSpanFull()
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'وصف مختصر لما تسمح به هذه الصلاحية'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
         ]);
     }
 

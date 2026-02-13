@@ -80,7 +80,7 @@ class BranchResource extends Resource
                         ->default(true)
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'عند إيقافه لن يظهر الفرع في قوائم الاختيار')
                         ->helperText('عند إيقافه لن يظهر الفرع في قوائم الاختيار'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
 
             // ── Section 2: Geolocation — Leaflet Map Picker ──────
             Forms\Components\Section::make(__('branches.geolocation_section'))
@@ -123,7 +123,7 @@ class BranchResource extends Resource
                         ->suffix(__('branches.meters'))
                         ->helperText(__('branches.geofence_radius_help'))
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'النطاق الجغرافي الذي يُسمح بتسجيل الحضور منه حول مقر الفرع'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
 
             // ── Section 3: Shift & Policy ─────────────────────────
             Forms\Components\Section::make(__('branches.shift_section'))
@@ -150,7 +150,7 @@ class BranchResource extends Resource
                         ->maxValue(120)
                         ->suffix(__('branches.minutes'))
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'المدة المسموحة بعد بداية الدوام قبل احتساب التأخير'),
-                ])->columns(3),
+                ])->columns(['default' => 1, 'lg' => 3]),
 
             // ── Section 4: Address (Optional) ─────────────────────
             Forms\Components\Section::make(__('branches.address_section'))
@@ -172,7 +172,7 @@ class BranchResource extends Resource
                     Forms\Components\TextInput::make('city_en')
                         ->label(__('branches.city_en'))
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'اسم المدينة بالإنجليزية'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
 
             // ── Section 5: Financial (Optional) ───────────────────
             Forms\Components\Section::make(__('branches.financial_section'))
@@ -193,7 +193,7 @@ class BranchResource extends Resource
                         ->prefix(__('branches.currency_sar'))
                         ->disabled()
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'إجمالي الخسائر المالية من تأخيرات الموظفين'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
         ]);
     }
 

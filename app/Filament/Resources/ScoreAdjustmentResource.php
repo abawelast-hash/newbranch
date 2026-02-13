@@ -90,7 +90,7 @@ class ScoreAdjustmentResource extends Resource
                         ->visible(fn (Forms\Get $get) => $get('scope') === 'department')
                         ->required(fn (Forms\Get $get) => $get('scope') === 'department')
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'القسم الذي سيُطبَّق عليه التعديل'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
 
             Forms\Components\Section::make('التعديل')
                 ->schema([
@@ -131,7 +131,7 @@ class ScoreAdjustmentResource extends Resource
 
                     Forms\Components\Hidden::make('adjusted_by')
                         ->default(fn () => auth()->id()),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
         ]);
     }
 

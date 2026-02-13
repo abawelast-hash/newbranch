@@ -102,7 +102,7 @@ class AttendanceLogResource extends Resource
                         ->required()
                         ->label(__('attendance.status'))
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'حالة الحضور للموظف في هذا اليوم'),
-                ])->columns(3),
+                ])->columns(['default' => 1, 'lg' => 3]),
 
             Forms\Components\Section::make(__('attendance.financial_section'))
                 ->schema([
@@ -135,7 +135,7 @@ class AttendanceLogResource extends Resource
                         ->disabled()
                         ->label(__('attendance.overtime_value'))
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'قيمة العمل الإضافي بمعدل 1.5× من تكلفة الدقيقة'),
-                ])->columns(3),
+                ])->columns(['default' => 1, 'lg' => 3]),
 
             Forms\Components\Section::make(__('attendance.gps_section'))
                 ->schema([
@@ -154,7 +154,7 @@ class AttendanceLogResource extends Resource
                     Forms\Components\Toggle::make('is_manual_entry')
                         ->label(__('attendance.manual_entry'))
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'هل تم إدخال السجل يدوياً بواسطة الإدارة'),
-                ])->columns(3),
+                ])->columns(['default' => 1, 'lg' => 3]),
 
             Forms\Components\Textarea::make('notes')
                 ->label(__('attendance.notes'))

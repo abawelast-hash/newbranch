@@ -59,7 +59,7 @@ class FinancialReportsPage extends Page implements HasForms
     {
         return $form
             ->schema([
-                Forms\Components\Grid::make(4)
+                Forms\Components\Grid::make(['default' => 1, 'lg' => 4])
                     ->schema([
                         Forms\Components\Select::make('scope')
                             ->label(__('command.scope'))

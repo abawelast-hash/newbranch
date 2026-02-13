@@ -116,7 +116,7 @@ class RoleResource extends Resource
                         ->label('دور نظامي (لا يمكن حذفه)')
                         ->disabled(fn (?Role $record) => $record?->is_system ?? false)
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'الأدوار النظامية لا يمكن حذفها لضمان استقرار النظام'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
 
             // ── Permission Matrix ──
             Forms\Components\Section::make('مصفوفة الصلاحيات')
@@ -125,7 +125,7 @@ class RoleResource extends Resource
                     Forms\Components\CheckboxList::make('permissions')
                         ->label('')
                         ->relationship('permissions', 'name_ar')
-                        ->columns(3)
+                        ->columns(['default' => 1, 'lg' => 3])
                         ->bulkToggleable()
                         ->searchable()
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'اختر الصلاحيات الممنوحة لهذا الدور')

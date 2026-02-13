@@ -99,7 +99,7 @@ class AttendanceResource extends Resource
                             ->maxLength(255)
                             ->placeholder('أضف ملاحظة إن وجدت...'),
                     ])
-                    ->columns(2),
+                    ->columns(['default' => 1, 'lg' => 2]),
             ]);
     }
 

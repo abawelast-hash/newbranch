@@ -81,7 +81,7 @@ class TrapResource extends Resource
                     Forms\Components\Textarea::make('description_en')
                         ->label(__('traps.description_en'))
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'وصف المصيدة بالإنجليزية'),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'lg' => 2]),
 
             Forms\Components\Section::make(__('traps.risk_config'))
                 ->schema([
@@ -109,7 +109,7 @@ class TrapResource extends Resource
                         ->default(true)
                         ->label(__('traps.is_active'))
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'هل المصيدة نشطة حالياً'),
-                ])->columns(3),
+                ])->columns(['default' => 1, 'lg' => 3]),
         ]);
     }
 
