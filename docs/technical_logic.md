@@ -1,6 +1,6 @@
 # صرح — المخطط المعماري (المنطق التقني)
-> **الإصدار:** 3.4.1 | **آخر تحديث:** 2026-02-13
-> **النطاق:** مخطط قاعدة البيانات، علاقات الكيانات، معمارية تدفق البيانات، وقرارات التصميم
+> **الإصدار:** 4.0.0 | **آخر تحديث:** 2026-02-13
+> **النطاق:** مخطط قاعدة البيانات، علاقات الكيانات، معمارية تدفق البيانات، الأحداث، السياسات، وقرارات التصميم
 
 ---
 
@@ -875,3 +875,207 @@ Score = 100 (base)
 - أحدث تعيين لكل موظف يُعلّم كـ `is_current = true`
 
 **النتائج على الإنتاج:** 38 سجل `user_shift` محدّث، 0 سجل `user_badge`
+
+---
+
+## 16. المعمارية المبنية على الأحداث — Event-Driven Architecture (v4.0)
+
+### 16.1 نظرة عامة
+
+في v4.0 تم تحويل المعمارية من **اقتران مباشر** (كل خدمة تستدعي أخرى) إلى **فصل بالأحداث** (Decoupling via Events):
+
+```
+         v3.x (اقتران مباشر)              v4.0 (فصل بالأحداث)
+┌───────────────┐                  ┌───────────────┐
+│ UserBadge     │───direct───▶│ PerformanceAlert│
+│ ::award()     │                  │ ::create()      │
+└───────────────┘                  └───────────────┘
+
+┌───────────────┐    event()    ┌───────────────┐    listen    ┌───────────────┐
+│ UserBadge     │─────────▶│ BadgeAwarded  │────────▶│ HandleBadge   │
+│ ::award()     │             │ (Event)       │            │ Points        │
+└───────────────┘             └───────────────┘            └───────────────┘
+```
+
+### 16.2 خريطة الأحداث والمستمعين
+
+```
+BadgeAwarded (UserBadge)
+  └──▶ HandleBadgePoints → PerformanceAlert::create(badge_earned)
+
+TrapTriggered (TrapInteraction)
+  └──▶ LogTrapInteraction → AuditLog::record(trap.triggered)
+
+AttendanceRecorded (AttendanceLog)
+  └──▶ (مُعدّ للتوسع — لا مستمعين حالياً)
+```
+
+**التسجيل:** في `AppServiceProvider::boot()` عبر `Event::listen()`
+
+### 16.3 سير عملية تسجيل الحضور غير المتزامن (Queue)
+
+```
+HTTP POST /attendance/queue-check-in
+    │
+    └─▶ AttendanceController::queueCheckIn()
+        │
+        ├─▶ Validate (latitude, longitude)
+        │
+        ├─▶ AttendanceService::queueCheckIn()
+        │       └─▶ ProcessAttendanceJob::dispatch()
+        │
+        └─▶ return HTTP 202 {message, job_status: 'queued'}
+
+─── في الطابور (غير متزامن) ───
+
+ProcessAttendanceJob::handle()
+    │
+    ├─▶ جلب الفرع (إذا لم يوجد → Log::error + return)
+    ├─▶ GeofencingService::validatePosition() → {distance_meters, within_geofence}
+    ├─▶ جلب الوردية (currentShift أو إعدادات الفرع)
+    ├─▶ new AttendanceLog(...) → evaluateAttendance() → calculateFinancials() → save()
+    └─▶ event(new AttendanceRecorded($log))
+```
+
+---
+
+## 17. معمارية السياسات — Policy Architecture (v4.0)
+
+### 17.1 المشكلة
+
+في v3.x كانت الصلاحيات تُدار عبر `Gate::before()` + `security_level` فقط. هذا كافٍ للوصول العام لكن **غير كافٍ** لحماية بيانات محددة مثل الرواتب.
+
+### 17.2 الحل: سياسات مخصصة (Policies)
+
+```
+طلب الوصول للراتب
+    │
+    ├─▶ Gate::before() → security_level === 10 → ALLOW (bypass)
+    │
+    └─▶ UserPolicy::viewSalary($user, $target)
+        ├─▶ المدير المباشر → ALLOW
+        ├─▶ Level 7+ نفس الفرع → ALLOW
+        ├─▶ Level 6+ نفس القسم → ALLOW
+        └─▶ DENY
+```
+
+**التسجيل في `AppServiceProvider`:**
+```php
+Gate::policy(User::class, UserPolicy::class);
+Gate::policy(AttendanceLog::class, AttendanceLogPolicy::class);
+```
+
+### 17.3 تسلسل فحص الصلاحيات (v4.0)
+
+```
+1. Gate::before() → Level 10 / super_admin → ALLOW
+2. Gate::policy() → سياسة مخصصة (UserPolicy / AttendanceLogPolicy)
+3. Named Gate → 'access-whistleblower-vault', 'access-trap-audit', etc.
+4. Filament canAccess() → فحص إضافي خاص بالصفحة/المورد
+```
+
+---
+
+## 18. معمارية الاستثناءات — Exception Architecture (v4.0)
+
+### 18.1 الهرم الجديد
+
+```
+Throwable
+  ├─▶ Exception
+  │     └─▶ BusinessException (v4.0)
+  │           عندما: خطأ أعمال معروف (تسجيل مكرر, موظف غير نشط)
+  │           يحمل: userMessage + httpCode + context
+  │
+  └─▶ RuntimeException
+        └─▶ OutOfGeofenceException (مُحدّث v4.0)
+              عندما: الموظف خارج السياج
+              يحمل: distance + allowedRadius + رسالة مترجمة
+```
+
+### 18.2 معالجة موحدة في `bootstrap/app.php`
+
+| نوع الاستثناء | المعالجة | كود HTTP |
+|---------------|---------|----------|
+| `BusinessException` | `{message: getUserMessage()}` | `getHttpCode()` (422 افتراضي) |
+| `ModelNotFoundException` | `{message: 'السجل غير موجود'}` | 404 |
+| `DivisionByZeroError` | `{message: 'خطأ حسابي'}` | 500 |
+| أي خطأ آخر (إنتاج) | `{message: 'خطأ داخلي'}` | 500 |
+
+**التسجيل التلقائي:**
+- كل استثناء يُسجل في `AuditLog` في الإنتاج (ليس في بيئة local)
+- حماية من الدورات اللانهائية: try/catch حول `AuditLog::record()`
+
+---
+
+## 19. طبقة التعلم الآلي — ML Layer (v4.0)
+
+### 19.1 ChurnPredictor
+
+```
+Input:  User → AttendanceLogs (آخر 30 يوم)
+    │
+    ├─▶ نسبة التأخر (lateDays / totalDays)
+    │     > 50% → +30   |   > 30% → +20   |   > 15% → +10
+    │
+    ├─▶ الغياب (absentDays)
+    │     ≥ 5 → +30   |   ≥ 3 → +20   |   ≥ 1 → +10
+    │
+    ├─▶ الانصراف المبكر (earlyLeaveDays)
+    │     ≥ 5 → +15   |   ≥ 3 → +10
+    │
+    └─▶ قلة النقاط (total_points)
+          = 0 → +15   |   < 20 → +5
+    │
+Output: score ≥ 70 → critical
+        score ≥ 45 → high
+        score ≥ 20 → medium
+        score <  20 → low
+```
+
+**ملاحظة:** هذا **stub** يعتمد على قواعد ثابتة. في v5.0 سيُربط بنموذج ML فعلي (Python/ONNX).
+
+---
+
+## 20. معمارية الطابور — Queue Architecture (v4.0)
+
+### 20.1 المهام
+
+| المهمة | المحاولات | المهلة | الغرض |
+|--------|-----------|--------|--------|
+| `ProcessAttendanceJob` | 3 | 30s | تسجيل حضور غير متزامن |
+| `SendCircularJob` | 2 | 120s | إرسال تعاميم بدفعات |
+| `RecalculateMonthlyAttendanceJob` | 3 | 300s | إعادة الحساب الشهري |
+
+### 20.2 الجدولة (`routes/console.php`)
+
+```
+أول يوم من كل شهر @ 02:00
+  └─▶ RecalculateMonthlyAttendanceJob::forMonth(year, month)
+      withoutOverlapping() + onOneServer()
+
+أسبوعياً
+  └─▶ queue:flush (تنظيف المهام الفاشلة)
+```
+
+### 20.3 الإعداد على الإنتاج
+
+```bash
+# تشغيل عامل الطابور
+php artisan queue:work --daemon --tries=3 --max-time=3600
+
+# إضافة جدولة Laravel إلى crontab
+* * * * * cd /home/u850419603/sarh && php artisan schedule:run >> /dev/null 2>&1
+```
+
+---
+
+## 21. توثيق API التلقائي — Scramble (v4.0)
+
+| العنصر | القيمة |
+|---------|-------|
+| الحزمة | `dedoc/scramble` v0.13.13 |
+| الإعدادات | `config/scramble.php` |
+| الرابط | `https://sarh.online/docs/api` |
+| صفحة Filament | `ApiDocsPage` (المستوى 7+) |
+| التوثيق | تلقائي من docblocks + تلميحات النوع |

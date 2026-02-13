@@ -1,5 +1,5 @@
 # SARH — Validation Protocol (Test Suite)
-> **Version:** 3.4.1 | **Updated:** 2026-02-13
+> **Version:** 4.0.0 | **Updated:** 2026-02-13
 > **Scope:** Test cases, edge cases, validation results, and zero-side-effect verification
 
 ---
@@ -18,6 +18,10 @@
 | Model Relationships | 10 | — | ✅ Defined |
 | UserShift Entity Model | 11 | — | ✅ Defined |
 | UserBadge Entity Model | 9 | — | ✅ Defined |
+| **UserPolicy (v4.0)** | **10** | — | ✅ Defined |
+| **AttendanceLogPolicy (v4.0)** | **4** | — | ✅ Defined |
+| **Exception Handling (v4.0)** | **4** | — | ✅ Defined |
+| **Attendance Queue (v4.0)** | — | **2** | ✅ Defined |
 
 ---
 
@@ -909,4 +913,173 @@ Expect: Returns 1 result for user1
 Given: User with 2 UserBadge records
 Expect: $user->badges returns collection with 2 UserBadge items
 Assert: Relationship type is HasMany (not BelongsToMany)
+```
+
+---
+
+## §24. UserPolicy Tests (v4.0)
+
+### Test File: `tests/Unit/UserPolicyTest.php`
+
+#### TC-POL-001: Level 10 Can View Any Salary
+```
+Given: Admin with security_level=10
+Target: Employee in different branch (branch_id=2)
+Expect: viewSalary() = true
+```
+
+#### TC-POL-002: Super Admin Can View Any Salary
+```
+Given: User with is_super_admin=true (security_level=1)
+Target: Employee in different branch
+Expect: viewSalary() = true
+```
+
+#### TC-POL-003: Direct Manager Views Subordinate Salary
+```
+Given: Manager with id=5, security_level=3
+Target: Employee with direct_manager_id=5
+Expect: viewSalary() = true
+```
+
+#### TC-POL-004: Branch Manager (Level 7+) Views Branch Salaries
+```
+Given: Manager with security_level=7, branch_id=1
+Target: Employee with branch_id=1
+Expect: viewSalary() = true
+```
+
+#### TC-POL-005: Department Manager (Level 6+) Views Department Salaries
+```
+Given: Manager with security_level=6, department_id=5
+Target: Employee with department_id=5 (different branch)
+Expect: viewSalary() = true
+```
+
+#### TC-POL-006: Regular Employee Cannot View Others' Salary
+```
+Given: Employee with security_level=1, branch_id=1
+Target: Employee in different branch/department, not subordinate
+Expect: viewSalary() = false
+```
+
+#### TC-POL-007: Level 5 Cannot View Branch Salaries
+```
+Given: Employee with security_level=5, branch_id=1
+Target: Employee with branch_id=1 (same branch)
+Expect: viewSalary() = false (requires level 7+)
+```
+
+#### TC-POL-008: Only Level 10 Can Delete Users
+```
+Given: Admin with security_level=10
+Expect: delete() = true
+Given: Manager with security_level=7
+Expect: delete() = false
+```
+
+#### TC-POL-009: Level 10 Can Update Any Salary
+```
+Given: Admin with security_level=10, branch_id=1
+Target: Employee with branch_id=2
+Expect: updateSalary() = true
+```
+
+#### TC-POL-010: Level 7 Can Update Same Branch Salary Only
+```
+Given: Manager with security_level=7, branch_id=1
+Target: Employee with branch_id=1 → updateSalary() = true
+Target: Employee with branch_id=2 → updateSalary() = false
+```
+
+---
+
+## §25. AttendanceLogPolicy Tests (v4.0)
+
+### Test File: `tests/Unit/AttendanceLogPolicyTest.php`
+
+#### TC-ALPOL-001: Level 10 Can View Any Log
+```
+Given: Admin with security_level=10
+Log: Any user, any branch
+Expect: view() = true
+```
+
+#### TC-ALPOL-002: Employee Can View Own Logs
+```
+Given: Employee with id=5
+Log: user_id=5
+Expect: view() = true
+```
+
+#### TC-ALPOL-003: Level 6+ Can View Branch Logs
+```
+Given: Manager with security_level=6, branch_id=1
+Log: user_id=99, branch_id=1 (same branch)
+Expect: view() = true
+```
+
+#### TC-ALPOL-004: Regular Employee Cannot View Others' Logs
+```
+Given: Employee with security_level=1, id=5
+Log: user_id=99, branch_id=2
+Expect: view() = false
+```
+
+---
+
+## §26. Exception Handling Tests (v4.0)
+
+### Test File: `tests/Unit/ExceptionTest.php`
+
+#### TC-EXC-001: BusinessException Carries User Message and HTTP Code
+```
+Input: new BusinessException('الرصيد غير كافٍ', 'Insufficient balance for user 5', 422)
+Expect: getUserMessage() = 'الرصيد غير كافٍ'
+Expect: getHttpCode() = 422
+Expect: getMessage() = 'Insufficient balance for user 5'
+```
+
+#### TC-EXC-002: BusinessException Defaults Log Message to User Message
+```
+Input: new BusinessException('خطأ في البيانات')
+Expect: getMessage() = 'خطأ في البيانات' (same as user message)
+Expect: getHttpCode() = 422 (default)
+```
+
+#### TC-EXC-003: OutOfGeofenceException Carries Distance and Radius
+```
+Input: new OutOfGeofenceException(45.678, 17.0)
+Expect: getDistance() = 45.68 (rounded to 2 decimals)
+Expect: getAllowedRadius() = 17.0
+```
+
+#### TC-EXC-004: BusinessException Accepts Custom HTTP Code
+```
+Input: new BusinessException('غير مصرح', null, 403)
+Expect: getHttpCode() = 403
+```
+
+---
+
+## §27. Attendance Queue Tests (v4.0)
+
+### Test File: `tests/Feature/AttendanceServiceQueueTest.php`
+
+#### TC-QUEUE-001: queueCheckIn Returns Processing Status
+```
+Given: Queue::fake(), valid user + branch
+When:  AttendanceService::queueCheckIn(user, lat, lng, ip, device)
+Expect: result['status'] = 'processing'
+Expect: result has 'message' key
+Assert: Queue::assertPushed(ProcessAttendanceJob::class)
+```
+
+#### TC-QUEUE-002: Queue Check-in Endpoint Returns 202
+```
+Given: Queue::fake(), authenticated user
+When:  POST /attendance/queue-check-in {latitude, longitude}
+Expect: HTTP 202 Accepted
+Expect: response has 'message' and 'job_status'
+Assert: Queue::assertPushed(ProcessAttendanceJob::class)
 ```

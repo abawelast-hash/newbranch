@@ -1033,3 +1033,254 @@
 - **الملف:** `lang/{ar,en}/competition.php` — 30+ مفتاح لواجهة المنافسة (الترتيب، المستويات، الشريط، التسجيل)
 - **الملف:** `lang/{ar,en}/users.php` — 7 مفاتيح جديدة لإدارة النقاط
 
+---
+
+## §23. سياسة المستخدم (`App\Policies\UserPolicy`) — v4.0
+
+**الملف:** `app/Policies/UserPolicy.php`
+**الغرض:** حماية بيانات الرواتب من الوصول غير المصرح
+**التسجيل:** `Gate::policy(User::class, UserPolicy::class)` في `AppServiceProvider`
+
+#### `viewSalary(User $user, User $target): bool`
+- **الغرض:** هل يستطيع المستخدم مشاهدة راتب الموظف المستهدف؟
+- **المنطق:**
+  1. المستوى 10 أو super_admin → `true`
+  2. المدير المباشر (`target.direct_manager_id === user.id`) → `true`
+  3. المستوى 7+ مع نفس الفرع → `true`
+  4. المستوى 6+ مع نفس القسم → `true`
+  5. غير ذلك → `false`
+
+#### `updateSalary(User $user, User $target): bool`
+- **الغرض:** هل يستطيع تعديل الراتب؟
+- **المنطق:** المستوى 10/super_admin أو المستوى 7+ في نفس الفرع
+
+#### `delete(User $user, User $target): bool`
+- **الغرض:** هل يستطيع حذف الموظف؟
+- **المنطق:** المستوى 10 أو super_admin **فقط**
+
+---
+
+## §24. سياسة سجل الحضور (`App\Policies\AttendanceLogPolicy`) — v4.0
+
+**الملف:** `app/Policies/AttendanceLogPolicy.php`
+**الغرض:** تصفية سجلات الحضور حسب الفرع
+**التسجيل:** `Gate::policy(AttendanceLog::class, AttendanceLogPolicy::class)` في `AppServiceProvider`
+
+#### `view(User $user, AttendanceLog $log): bool`
+- **المنطق:**
+  1. المستوى 10 / super_admin → `true`
+  2. صاحب السجل (`user.id === log.user_id`) → `true`
+  3. المدير المباشر لصاحب السجل → `true`
+  4. المستوى 6+ مع نفس الفرع → `true`
+  5. غير ذلك → `false`
+
+#### `static scopeBranch(Builder $query, User $user): Builder`
+- **الغرض:** تصفية الاستعلامات حسب فرع المستخدم
+- **المنطق:** المستوى 10 → بدون تصفية; غيره → `WHERE branch_id = user.branch_id`
+- **الاستخدام:** `AttendanceLogPolicy::scopeBranch($query, $user)`
+
+---
+
+## §25. مهمة تسجيل الحضور غير المتزامن (`App\Jobs\ProcessAttendanceJob`) — v4.0
+
+**الملف:** `app/Jobs/ProcessAttendanceJob.php`
+**السمات:** `ShouldQueue`, `SerializesModels`
+
+| الخاصية | القيمة |
+|---------|-------|
+| timeout | 30 ثانية |
+| tries | 3 محاولات |
+
+#### `__construct(User $user, float $latitude, float $longitude, ?string $ip, ?string $device)`
+- **الغرض:** إنشاء مهمة تسجيل حضور عبر الطابور
+
+#### `handle(GeofencingService $geofencingService): void`
+- **التسلسل:**
+  1. جلب الفرع (إذا لم يوجد → تسجيل خطأ + إيقاف)
+  2. التحقق من الموقع عبر `GeofencingService`
+  3. جلب الوردية من `currentShift()` أو إعدادات الفرع
+  4. إنشاء `AttendanceLog` + `evaluateAttendance()` + `calculateFinancials()`
+  5. إطلاق حدث `AttendanceRecorded`
+
+---
+
+## §26. مهمة إرسال التعاميم (`App\Jobs\SendCircularJob`) — v4.0
+
+**الملف:** `app/Jobs/SendCircularJob.php`
+**السمات:** `ShouldQueue`, `SerializesModels`
+
+| الخاصية | القيمة |
+|---------|-------|
+| timeout | 120 ثانية |
+| tries | 2 محاولتان |
+
+#### `__construct(Circular $circular, array $userIds)`
+
+#### `handle(): void`
+- **المنطق:** تقسيم المستخدمين إلى دفعات (100) → إنشاء `PerformanceAlert` لكل موظف
+- **نوع التنبيه:** `circular`
+- **الأهمية:** `warning` إذا التعميم عاجل، وإلا `info`
+- **الحماية:** `sleep(1)` بين الدفعات + try/catch لكل موظف
+
+---
+
+## §27. الأحداث — Events (v4.0)
+
+### `App\Events\BadgeAwarded`
+- **السمات:** `Dispatchable`, `SerializesModels`
+- **الإنشاء:** `new BadgeAwarded(UserBadge $userBadge)`
+- **يُطلق من:** `UserBadge::award()` بعد منح الشارة
+
+### `App\Events\TrapTriggered`
+- **السمات:** `Dispatchable`, `SerializesModels`
+- **الإنشاء:** `new TrapTriggered(TrapInteraction $interaction)`
+- **يُطلق من:** TrapResponseService عند تسجيل تفاعل مع مصيدة
+
+### `App\Events\AttendanceRecorded`
+- **السمات:** `Dispatchable`, `SerializesModels`
+- **الإنشاء:** `new AttendanceRecorded(AttendanceLog $log)`
+- **يُطلق من:** `AttendanceService::checkIn()` + `ProcessAttendanceJob::handle()` بعد حفظ السجل
+
+---
+
+## §28. المستمعون — Listeners (v4.0)
+
+### `App\Listeners\HandleBadgePoints`
+- **يستمع إلى:** `BadgeAwarded`
+- **handle():** يُنشئ `PerformanceAlert` بالتفاصيل:
+  - `alert_type = 'badge_earned'`
+  - `severity = 'success'`
+  - `title_ar = 'تهانينا!'`
+  - `trigger_data = {badge_id, user_badge_id, points_reward}`
+- **الحماية:** try/catch + Log::warning
+
+### `App\Listeners\LogTrapInteraction`
+- **يستمع إلى:** `TrapTriggered`
+- **handle():** يُسجل في `AuditLog::record()` بالتفاصيل:
+  - `action = 'trap.triggered'`
+  - `data = {trap_id, trap_type, trap_element, risk_level, ip_address, page_url}`
+- **الحماية:** try/catch + Log::warning
+
+---
+
+## §29. استثناء الأعمال (`App\Exceptions\BusinessException`) — v4.0
+
+**الملف:** `app/Exceptions/BusinessException.php`
+**يرث من:** `Exception`
+
+#### `__construct(string $userMessage, ?string $logMessage, int $httpCode = 422, array $context = [], ?Throwable $previous = null)`
+- **الغرض:** إنشاء استثناء أعمال برسالة مستخدم ورسالة تسجيل منفصلة
+- **$userMessage:** الرسالة التي تظهر للمستخدم النهائي
+- **$logMessage:** الرسالة التقنية للسجلات (إن لم تُعطى → userMessage)
+- **$httpCode:** كود HTTP (افتراضي 422)
+- **$context:** بيانات إضافية للتدقيق
+
+| الدالة | يُرجع |
+|--------|--------|
+| `getUserMessage()` | string — رسالة المستخدم |
+| `getHttpCode()` | int — كود HTTP |
+| `getContext()` | array — سياق إضافي |
+
+---
+
+## §30. استثناء خارج السياج (`App\Exceptions\OutOfGeofenceException`) — مُحدّث v4.0
+
+**الملف:** `app/Exceptions/OutOfGeofenceException.php`
+**يرث من:** `RuntimeException`
+
+#### `__construct(float $distance, float $allowedRadius)`
+- **الغرض:** يُطلق عندما يكون الموظف خارج نطاق السياج الجغرافي
+- **الرسالة:** `__('attendance.outside_geofence', ['distance' => ..., 'radius' => ...])`
+
+| الدالة | يُرجع | أُضيفت في |
+|--------|--------|----------|
+| `getDistance()` | float — المسافة الفعلية بالأمتار | v4.0 |
+| `getAllowedRadius()` | float — نصف القطر المسموح | v4.0 |
+
+---
+
+## §31. متنبئ مغادرة الموظفين (`App\ML\ChurnPredictor`) — v4.0
+
+**الملف:** `app/ML/ChurnPredictor.php`
+**الغرض:** حساب درجة خطر مغادرة الموظف بناءً على أنماط الحضور
+
+#### `calculateRisk(User $user): string`
+- **يُرجع:** `'low'` | `'medium'` | `'high'` | `'critical'`
+- **نطاق التحليل:** آخر 30 يوم
+- **المؤشرات:** نسبة التأخر (0–30)، الغياب (0–30)، الانصراف المبكر (0–15)، قلة النقاط (0–15)
+- **الحدود:** critical≥70, high≥45, medium≥20, low<20
+- **لا بيانات:** يُرجع `'low'`
+
+#### `getRiskDetails(User $user): array`
+- **يُرجع:** `['user_id', 'risk_level', 'recommendation_ar', 'recommendation_en', 'analyzed_at']`
+- **التوصيات:** حسب المستوى (كل مستوى له توصية بالعربية والإنجليزية)
+
+---
+
+## §32. مورد التنبيهات (`App\Filament\Resources\PerformanceAlertResource`) — v4.0
+
+**الملف:** `app/Filament/Resources/PerformanceAlertResource.php`
+**النموذج:** `PerformanceAlert`
+
+| الخاصية | القيمة |
+|---------|-------|
+| الأيقونة | `heroicon-o-bell-alert` |
+| المجموعة | مجموعة الموظفين |
+| الترتيب | 15 |
+| Badge | عدد غير المقروء (أصفر) |
+| Branch Scope | غير المدير → فرعه فقط |
+
+### أعمدة الجدول
+
+| العمود | النوع | الوصف |
+|--------|------|-------|
+| `user.name_ar` | TextColumn | قابل للبحث + الترتيب |
+| `alert_type` | Badge | لون حسب النوع |
+| `severity` | Badge | لون حسب الأهمية |
+| `title_ar` | Text | محدود بـ 50 حرف |
+| `is_read` | Icon | boolean |
+| `created_at` | DateTime | ترتيب تنازلي |
+
+### الإجراءات
+- **تحديد كمقروء:** فردي + جماعي → `is_read=true, read_at=now(), dismissed_by=auth.id`
+- **عرض:** `ViewAction`
+
+---
+
+## §33. صفحة توثيق API (`App\Filament\Pages\ApiDocsPage`) — v4.0
+
+**الملف:** `app/Filament/Pages/ApiDocsPage.php`
+**القالب:** `resources/views/filament/pages/api-docs.blade.php`
+
+| الخاصية | القيمة |
+|---------|-------|
+| الأيقونة | `heroicon-o-code-bracket` |
+| المجموعة | الإعدادات |
+| الترتيب | 99 |
+| الصلاحية | `security_level >= 7 \|\| is_super_admin` |
+
+### القالب (`api-docs.blade.php`)
+- جدول نقاط النهاية (Endpoints) للحضور
+- أمثلة الطلبات والاستجابات (JSON)
+- جدول أكواد الأخطاء
+- رابط إلى `https://sarh.online/docs/api` (Scramble)
+
+---
+
+## §34. تعديلات الخدمات الموجودة (v4.0)
+
+### `AttendanceService::queueCheckIn(User $user, float $lat, float $lng, ?string $ip, ?string $device): void`
+- **أُضيفت في:** v4.0
+- **الغرض:** إرسال تسجيل الحضور إلى الطابور (غير متزامن)
+- **المنطق:** `ProcessAttendanceJob::dispatch($user, $lat, $lng, $ip, $device)`
+
+### `AttendanceController::queueCheckIn(Request $request): JsonResponse`
+- **أُضيفت في:** v4.0
+- **المسار:** `POST /attendance/queue-check-in`
+- **الاستجابة:** HTTP 202 Accepted + `{message, job_status: 'queued'}`
+
+### `RecalculateMonthlyAttendanceJob::forMonth(int $year, int $month): self`
+- **أُضيفت في:** v4.0
+- **الغرض:** إنشاء Job لإعادة حساب شهر كامل بنطاق `all`
+- **تُستخدم من:** الجدولة الشهرية في `routes/console.php`
+
