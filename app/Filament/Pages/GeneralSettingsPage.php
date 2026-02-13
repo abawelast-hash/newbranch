@@ -52,7 +52,7 @@ class GeneralSettingsPage extends Page implements HasForms
 
     public function mount(): void
     {
-        $settings = Setting::instance();
+        $settings = Setting::fresh();
         $this->form->fill($settings->toArray());
     }
 
@@ -149,8 +149,9 @@ class GeneralSettingsPage extends Page implements HasForms
     public function save(): void
     {
         $data = $this->form->getState();
-        $settings = Setting::instance();
-        $settings->update($data);
+        $settings = Setting::fresh();
+        $settings->fill($data);
+        $settings->save();
 
         Notification::make()
             ->title('تم حفظ الإعدادات بنجاح')

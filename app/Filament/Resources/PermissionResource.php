@@ -23,22 +23,22 @@ class PermissionResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('الأمان والصلاحيات');
+        return 'الأمان والصلاحيات';
     }
 
     public static function getNavigationLabel(): string
     {
-        return __('الصلاحيات');
+        return 'الصلاحيات';
     }
 
     public static function getModelLabel(): string
     {
-        return __('صلاحية');
+        return 'صلاحية';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('الصلاحيات');
+        return 'الصلاحيات';
     }
 
     public static function canAccess(): bool
@@ -70,7 +70,7 @@ class PermissionResource extends Resource
                         ->unique(ignoreRecord: true)
                         ->maxLength(100)
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'معرّف فريد يُستخدم برمجياً للتحقق من الصلاحية')
-                        ->helperText('مثال: view-attendance, manage-users'),
+                        ->helperText('معرّف فريد — مثال: view-attendance'),
 
                     Forms\Components\Select::make('group')
                         ->label('المجموعة')

@@ -25,7 +25,7 @@ class AttendanceExceptionResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('الحضور والانصراف');
+        return 'الحضور والانصراف';
     }
 
     public static function getNavigationLabel(): string

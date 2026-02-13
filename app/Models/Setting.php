@@ -47,11 +47,31 @@ class Setting extends Model
     {
         return Cache::remember('sarh_settings', 3600, function () {
             return static::firstOrCreate(['id' => 1], [
-                'app_name'      => 'صرح الإتقان',
-                'app_name_en'   => 'SARH Al-Itqan',
-                'welcome_title' => 'مرحباً بكم في صرح الإتقان',
+                'app_name'             => 'صرح الإتقان',
+                'app_name_en'          => 'SARH Al-Itqan',
+                'welcome_title'        => 'مرحباً بكم في صرح الإتقان',
+                'pwa_name'             => 'صرح الإتقان',
+                'pwa_short_name'       => 'صرح',
+                'pwa_theme_color'      => '#FF8C00',
+                'pwa_background_color' => '#ffffff',
             ]);
         });
+    }
+
+    /**
+     * Get a fresh (non-cached) instance for editing.
+     */
+    public static function fresh(): static
+    {
+        return static::firstOrCreate(['id' => 1], [
+            'app_name'             => 'صرح الإتقان',
+            'app_name_en'          => 'SARH Al-Itqan',
+            'welcome_title'        => 'مرحباً بكم في صرح الإتقان',
+            'pwa_name'             => 'صرح الإتقان',
+            'pwa_short_name'       => 'صرح',
+            'pwa_theme_color'      => '#FF8C00',
+            'pwa_background_color' => '#ffffff',
+        ]);
     }
 
     /**

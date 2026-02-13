@@ -62,7 +62,7 @@ class BranchResource extends Resource
                         ->required()
                         ->unique(ignoreRecord: true)
                         ->maxLength(20)
-                        ->placeholder('RYD-HQ')
+                        ->placeholder('مثال: RYD-01')
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'رمز مختصر يميّز الفرع — مثال: RYD-HQ'),
 
                     Forms\Components\TextInput::make('phone')

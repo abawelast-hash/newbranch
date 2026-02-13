@@ -75,7 +75,7 @@ class ReportFormulaResource extends Resource
                         ->unique(ignoreRecord: true)
                         ->maxLength(100)
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'معرّف فريد يُستخدم للإشارة لهذه الصيغة')
-                        ->helperText('مثال: performance-score, branch-rating'),
+                        ->helperText('معرّف فريد — مثال: performance-score'),
 
                     Forms\Components\Toggle::make('is_active')
                         ->label('مفعّلة')

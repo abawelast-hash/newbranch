@@ -27,22 +27,22 @@ class RoleResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return __('الأمان والصلاحيات');
+        return 'الأمان والصلاحيات';
     }
 
     public static function getNavigationLabel(): string
     {
-        return __('الأدوار');
+        return 'الأدوار';
     }
 
     public static function getModelLabel(): string
     {
-        return __('دور');
+        return 'دور';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('الأدوار');
+        return 'الأدوار';
     }
 
     /**
@@ -80,7 +80,7 @@ class RoleResource extends Resource
                         ->unique(ignoreRecord: true)
                         ->maxLength(100)
                         ->hintIcon('heroicon-m-information-circle', tooltip: 'معرّف فريد يُستخدم برمجياً للتحقق من الدور')
-                        ->helperText('معرّف فريد مثل: hr-manager, branch-admin'),
+                        ->helperText('معرّف فريد — مثال: hr-manager'),
 
                     Forms\Components\Select::make('level')
                         ->label('مستوى الأمان')
