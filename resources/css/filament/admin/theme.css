@@ -2,6 +2,7 @@
  * SARH  Admin Panel — Facebook-Style + Orange Palette v5.0
  */
 @import '/vendor/filament/filament/resources/css/theme.css';
+@import '../../rtl.css';
 
 @config '../../../../tailwind.config.js';
 

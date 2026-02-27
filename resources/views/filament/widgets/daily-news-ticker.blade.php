@@ -49,26 +49,37 @@
                     <h3 class="font-bold text-gray-700 dark:text-gray-200">{{ __('competition.news_ticker_title') }}</h3>
                 </div>
 
-                <div
-                    x-data="{
-                        offset: 0,
-                        speed: 1,
-                        init() {
-                            setInterval(() => {
-                                this.offset -= this.speed;
-                                const container = this.$refs.ticker;
-                                if (container && Math.abs(this.offset) > container.scrollWidth / 2) {
-                                    this.offset = 0;
-                                }
-                            }, 30);
+                {{-- CSS-based ticker — better battery life on mobile --}}
+                <style>
+                    @keyframes ticker-scroll {
+                        0%   { transform: translateX(0); }
+                        100% { transform: translateX(-33.333%); }
+                    }
+                    .ticker-track {
+                        animation: ticker-scroll 30s linear infinite;
+                    }
+                    .ticker-track:hover {
+                        animation-play-state: paused;
+                    }
+                    /* Pause on mobile to save battery */
+                    @media (max-width: 639px) {
+                        .ticker-track {
+                            animation-duration: 45s; /* slower on mobile */
                         }
-                    }"
-                    class="overflow-hidden"
-                >
+                    }
+                    /* Respect reduced-motion preference */
+                    @media (prefers-reduced-motion: reduce) {
+                        .ticker-track {
+                            animation: none !important;
+                            overflow-x: auto;
+                            -webkit-overflow-scrolling: touch;
+                        }
+                    }
+                </style>
+
+                <div class="overflow-hidden">
                     <div
-                        x-ref="ticker"
-                        :style="'transform: translateX(' + offset + 'px)'"
-                        class="flex items-center gap-8 whitespace-nowrap transition-none"
+                        class="ticker-track flex items-center gap-8 whitespace-nowrap"
                     >
                         @for($i = 0; $i < 3; $i++)
                             @foreach($items as $item)

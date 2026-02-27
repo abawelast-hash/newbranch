@@ -21,7 +21,7 @@
                     </div>
                 </div>
                 <div class="text-left">
-                    <div class="text-3xl font-black text-white tabular-nums">
+                    <div class="text-xl sm:text-3xl font-black text-white tabular-nums">
                         {{ number_format($totalLoss, 2) }}
                     </div>
                     <div class="text-xs text-white/70">{{ __('analytics.sar_currency') }}</div>
@@ -30,7 +30,7 @@
         </div>
 
         {{-- Summary Cards --}}
-        <div class="grid grid-cols-3 gap-px bg-gray-200 dark:bg-gray-700">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-px bg-gray-200 dark:bg-gray-700">
             <div class="bg-white dark:bg-gray-900 p-4 text-center">
                 <div class="text-2xl font-bold text-red-600 tabular-nums">{{ number_format($totalLoss, 0) }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('analytics.total_losses_sar') }}</div>

@@ -1,0 +1,121 @@
+/**
+ * SARH RTL Fixes — Complementary to Filament's built-in RTL support
+ * ⚠️ DO NOT override Tailwind logical properties (start/end) or Filament defaults
+ *    This file only targets elements that Filament/Tailwind miss in RTL layouts
+ */
+
+/* ═══════════════════════════════════════════════════════════
+   1. SELECT / DROPDOWN ARROW POSITION
+   ═══════════════════════════════════════════════════════════ */
+[dir="rtl"] select,
+[dir="rtl"] .fi-select-input {
+    background-position: left 0.75rem center !important;
+    padding-right: 1rem !important;
+    padding-left: 2.5rem !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   2. MODAL CLOSE BUTTON — move to left
+   ═══════════════════════════════════════════════════════════ */
+[dir="rtl"] .fi-modal-close-btn {
+    left: 0.75rem !important;
+    right: auto !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   3. TABLE HEADER ROUNDED CORNERS — flip for RTL
+   ═══════════════════════════════════════════════════════════ */
+[dir="rtl"] .fi-ta-header-cell:first-child {
+    border-radius: 0 var(--fb-radius-sm, 0.5rem) var(--fb-radius-sm, 0.5rem) 0 !important;
+}
+[dir="rtl"] .fi-ta-header-cell:last-child {
+    border-radius: var(--fb-radius-sm, 0.5rem) 0 0 var(--fb-radius-sm, 0.5rem) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   4. SIDEBAR ACTIVE INDICATOR — flip border side
+   ═══════════════════════════════════════════════════════════ */
+[dir="rtl"] .fi-sidebar-item-active .fi-sidebar-item-button {
+    border-right: none !important;
+    border-left: 3px solid var(--fb-orange, #F97316) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   5. FORM ERROR BORDER — flip to right side in RTL
+   ═══════════════════════════════════════════════════════════ */
+[dir="rtl"] .fi-fo-field-wrp-error-message {
+    border-inline-end: none !important;
+    border-inline-start: 3px solid #FA3E3E !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   6. NOTIFICATION ACCENT BORDER — flip
+   ═══════════════════════════════════════════════════════════ */
+[dir="rtl"] .fi-no-notification {
+    border-inline-end: none !important;
+    border-inline-start: 3px solid var(--fb-orange, #F97316) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   7. BREADCRUMB SEPARATOR — flip chevron
+   ═══════════════════════════════════════════════════════════ */
+[dir="rtl"] .fi-breadcrumbs-item-separator svg {
+    transform: scaleX(-1);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   8. LIST & DETAIL PAGE BACK ARROWS — flip
+   ═══════════════════════════════════════════════════════════ */
+[dir="rtl"] .fi-page-header-heading a svg[class*="rotate"],
+[dir="rtl"] .fi-btn svg.rtl\:rotate-180 {
+    transform: rotate(180deg);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   9. INPUT ICONS (search, etc.) — position for RTL
+   ═══════════════════════════════════════════════════════════ */
+[dir="rtl"] .fi-input-wrp .fi-input-wrp-icon {
+    left: auto;
+    right: 0.75rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   10. TROPHY / TURTLE HIGHLIGHT BORDERS — flip
+   ═══════════════════════════════════════════════════════════ */
+[dir="rtl"] .trophy-highlight {
+    border-left: none;
+    border-right: 4px solid #F59E0B;
+}
+[dir="rtl"] .turtle-highlight {
+    border-left: none;
+    border-right: 4px solid #EF4444;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   11. CHECKBOX / RADIO ALIGNMENT
+   ═══════════════════════════════════════════════════════════ */
+[dir="rtl"] .fi-checkbox-input,
+[dir="rtl"] .fi-radio-input {
+    margin-left: 0.5rem;
+    margin-right: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   12. PAGINATION — fix RTL arrow direction
+   ═══════════════════════════════════════════════════════════ */
+[dir="rtl"] .fi-pagination-item-previous svg,
+[dir="rtl"] .fi-pagination-item-next svg {
+    transform: scaleX(-1);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   13. SAFE AREA INSETS (PWA / Notch devices)
+   ═══════════════════════════════════════════════════════════ */
+@supports(padding: max(0px)) {
+    .fi-topbar {
+        padding-top: max(0px, env(safe-area-inset-top)) !important;
+    }
+    .fi-main {
+        padding-bottom: max(0px, env(safe-area-inset-bottom)) !important;
+    }
+}
