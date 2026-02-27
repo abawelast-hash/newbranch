@@ -49,7 +49,7 @@
                     <h3 class="font-bold text-gray-700 dark:text-gray-200">{{ __('competition.news_ticker_title') }}</h3>
                 </div>
 
-                {{-- CSS-based ticker — better battery life on mobile --}}
+                {{-- Desktop: CSS-based smooth ticker animation --}}
                 <style>
                     @keyframes ticker-scroll {
                         0%   { transform: translateX(0); }
@@ -61,26 +61,17 @@
                     .ticker-track:hover {
                         animation-play-state: paused;
                     }
-                    /* Pause on mobile to save battery */
-                    @media (max-width: 639px) {
-                        .ticker-track {
-                            animation-duration: 45s; /* slower on mobile */
-                        }
-                    }
                     /* Respect reduced-motion preference */
                     @media (prefers-reduced-motion: reduce) {
                         .ticker-track {
                             animation: none !important;
-                            overflow-x: auto;
-                            -webkit-overflow-scrolling: touch;
                         }
                     }
                 </style>
 
-                <div class="overflow-hidden">
-                    <div
-                        class="ticker-track flex items-center gap-8 whitespace-nowrap"
-                    >
+                {{-- Desktop ticker (hidden on mobile) --}}
+                <div class="hidden sm:block overflow-hidden">
+                    <div class="ticker-track flex items-center gap-8 whitespace-nowrap">
                         @for($i = 0; $i < 3; $i++)
                             @foreach($items as $item)
                                 <span class="inline-flex items-center gap-2 text-sm font-medium {{ $item['color'] }}">
@@ -91,6 +82,16 @@
                             @endforeach
                         @endfor
                     </div>
+                </div>
+
+                {{-- Mobile: static scrollable list (no animation = saves battery) --}}
+                <div class="sm:hidden space-y-1 max-h-28 overflow-y-auto px-1" style="-webkit-overflow-scrolling: touch;">
+                    @foreach($items as $item)
+                        <div class="flex items-center gap-2 text-sm border-b border-gray-100 dark:border-gray-700 py-1.5">
+                            <span class="text-base">{{ $item['icon'] }}</span>
+                            <span class="font-medium {{ $item['color'] }}">{{ $item['text'] }}</span>
+                        </div>
+                    @endforeach
                 </div>
             </div>
         @else

@@ -30,24 +30,24 @@
         </div>
 
         {{-- Summary Cards --}}
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-px bg-gray-200 dark:bg-gray-700">
-            <div class="bg-white dark:bg-gray-900 p-4 text-center">
-                <div class="text-2xl font-bold text-red-600 tabular-nums">{{ number_format($totalLoss, 0) }}</div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-px bg-gray-200 dark:bg-gray-700">
+            <div class="bg-white dark:bg-gray-900 p-3 sm:p-4 text-center">
+                <div class="text-lg sm:text-2xl font-bold text-red-600 tabular-nums">{{ number_format($totalLoss, 0) }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('analytics.total_losses_sar') }}</div>
             </div>
-            <div class="bg-white dark:bg-gray-900 p-4 text-center">
-                <div class="text-2xl font-bold text-amber-600 tabular-nums">{{ number_format($totalDelay) }}</div>
+            <div class="bg-white dark:bg-gray-900 p-3 sm:p-4 text-center">
+                <div class="text-lg sm:text-2xl font-bold text-amber-600 tabular-nums">{{ number_format($totalDelay) }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('analytics.delay_minutes_label') }}</div>
             </div>
-            <div class="bg-white dark:bg-gray-900 p-4 text-center">
-                <div class="text-2xl font-bold text-gray-700 dark:text-gray-300 tabular-nums">{{ $totalAbsent }}</div>
+            <div class="bg-white dark:bg-gray-900 p-3 sm:p-4 text-center col-span-2 sm:col-span-1">
+                <div class="text-lg sm:text-2xl font-bold text-gray-700 dark:text-gray-300 tabular-nums">{{ $totalAbsent }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('analytics.absent_today') }}</div>
             </div>
         </div>
 
-        {{-- Branch Breakdown --}}
+        {{-- Branch Breakdown (hidden on mobile — details shown on desktop only) --}}
         @if(count($branches) > 0)
-            <div class="p-4">
+            <div class="hidden sm:block p-4">
                 <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{{ __('analytics.top_losing_branches') }}</h4>
                 <div class="space-y-2">
                     @foreach($branches as $i => $branch)

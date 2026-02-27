@@ -23,20 +23,27 @@ Route::get('/manifest.json', function () {
     $iconUrl = $s->logo_url ?? '/icon-192.png';
 
     return response()->json([
-        'name'             => $s->pwa_name,
-        'short_name'       => $s->pwa_short_name,
-        'description'      => $s->welcome_body ?? 'نظام إدارة الموارد البشرية',
+        'name'             => $s->pwa_name ?? 'سهر - SARH',
+        'short_name'       => $s->pwa_short_name ?? 'سهر',
+        'description'      => $s->welcome_body ?? 'نظام إدارة الموارد البشرية الذكي',
         'start_url'        => '/app/login',
         'scope'            => '/',
         'display'          => 'standalone',
         'orientation'      => 'portrait',
-        'theme_color'      => $s->pwa_theme_color,
-        'background_color' => $s->pwa_background_color,
+        'theme_color'      => $s->pwa_theme_color ?? '#F97316',
+        'background_color' => $s->pwa_background_color ?? '#F0F2F5',
         'lang'             => 'ar',
         'dir'              => 'rtl',
+        'categories'       => ['business', 'productivity'],
         'icons'            => [
-            ['src' => $iconUrl, 'sizes' => '192x192', 'type' => 'image/png'],
-            ['src' => $iconUrl, 'sizes' => '512x512', 'type' => 'image/png'],
+            ['src' => $iconUrl, 'sizes' => '72x72',   'type' => 'image/png', 'purpose' => 'any maskable'],
+            ['src' => $iconUrl, 'sizes' => '96x96',   'type' => 'image/png', 'purpose' => 'any maskable'],
+            ['src' => $iconUrl, 'sizes' => '128x128', 'type' => 'image/png', 'purpose' => 'any maskable'],
+            ['src' => $iconUrl, 'sizes' => '144x144', 'type' => 'image/png', 'purpose' => 'any maskable'],
+            ['src' => $iconUrl, 'sizes' => '152x152', 'type' => 'image/png', 'purpose' => 'any maskable'],
+            ['src' => $iconUrl, 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+            ['src' => $iconUrl, 'sizes' => '384x384', 'type' => 'image/png', 'purpose' => 'any maskable'],
+            ['src' => $iconUrl, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
         ],
     ], 200, ['Content-Type' => 'application/manifest+json']);
 })->name('manifest');
@@ -49,11 +56,62 @@ Route::get('/manifest.json', function () {
 Route::get('/sw.js', function () {
     return response(
         <<<'JS'
-        self.addEventListener('install', (e) => self.skipWaiting());
-        self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
+        const CACHE_NAME = 'sarh-v2';
+        const OFFLINE_URL = '/offline';
+        const STATIC_ASSETS = [
+            '/manifest.json',
+        ];
+
+        // Install — pre-cache critical assets
+        self.addEventListener('install', (e) => {
+            e.waitUntil(
+                caches.open(CACHE_NAME).then((cache) => {
+                    return cache.addAll(STATIC_ASSETS);
+                }).then(() => self.skipWaiting())
+            );
+        });
+
+        // Activate — clean old caches
+        self.addEventListener('activate', (e) => {
+            e.waitUntil(
+                caches.keys().then((names) => {
+                    return Promise.all(
+                        names.filter(n => n !== CACHE_NAME).map(n => caches.delete(n))
+                    );
+                }).then(() => self.clients.claim())
+            );
+        });
+
+        // Fetch — network-first for navigations, cache-first for assets
         self.addEventListener('fetch', (e) => {
+            const url = new URL(e.request.url);
+
+            // Skip non-GET and external requests
+            if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+
+            // CSS/JS/images: cache-first
+            if (url.pathname.startsWith('/build/') || url.pathname.match(/\.(css|js|png|jpg|svg|woff2?)$/)) {
+                e.respondWith(
+                    caches.match(e.request).then((cached) => {
+                        if (cached) return cached;
+                        return fetch(e.request).then((resp) => {
+                            if (resp.ok) {
+                                const clone = resp.clone();
+                                caches.open(CACHE_NAME).then((c) => c.put(e.request, clone));
+                            }
+                            return resp;
+                        });
+                    })
+                );
+                return;
+            }
+
+            // Navigation: network-first, fallback to cache
             if (e.request.mode === 'navigate') {
-                e.respondWith(fetch(e.request).catch(() => caches.match('/offline.html')));
+                e.respondWith(
+                    fetch(e.request).catch(() => caches.match(e.request))
+                );
+                return;
             }
         });
         JS,
