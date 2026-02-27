@@ -12,19 +12,19 @@ return new class extends Migration
         Schema::table('attendance_logs', function (Blueprint $table) {
             // فهرس مركّب للبحث بالموظف + التاريخ (الأكثر استخداماً)
             if (!$this->indexExists('attendance_logs', 'idx_al_user_date')) {
-                $table->index(['user_id', 'date'],    'idx_al_user_date');
+                $table->index(['user_id', 'attendance_date'], 'idx_al_user_date');
             }
             // فهرس الفرع + التاريخ (للتقارير والـ widgets)
             if (!$this->indexExists('attendance_logs', 'idx_al_branch_date')) {
-                $table->index(['branch_id', 'date'],  'idx_al_branch_date');
+                $table->index(['branch_id', 'attendance_date'], 'idx_al_branch_date');
             }
             // فهرس الحالة (للفلاتر)
             if (!$this->indexExists('attendance_logs', 'idx_al_status')) {
                 $table->index(['status'],             'idx_al_status');
             }
-            // فهرس تكلفة الغياب/التأخير
-            if (!$this->indexExists('attendance_logs', 'idx_al_cost')) {
-                $table->index(['cost'],               'idx_al_cost');
+            // فهرس overtime (بدلاً من cost غير الموجود)
+            if (!$this->indexExists('attendance_logs', 'idx_al_cost') && Schema::hasColumn('attendance_logs', 'overtime_value')) {
+                $table->index(['overtime_value'],     'idx_al_cost');
             }
         });
 
