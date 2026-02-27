@@ -15,7 +15,7 @@ class ProjectDataSeeder extends Seeder
      */
     public function run(): void
     {
-        $password = Hash::make('Goolbx512!!');
+        $password = Hash::make('Goolbx512@@');
 
         /*
         |----------------------------------------------------------------------

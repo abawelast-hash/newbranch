@@ -498,7 +498,7 @@ mysqldump -u root -p sarh > backup_$(date +%Y%m%d).sql
   - FADA-2: فضاء المحركات 2 (24.566088, 46.621759) — 11 موظفاً (Abd_y, Afzal, Habib, Imti, Inay, Irfan, Jihad, Qutaiba, Risha, Shehata, Wassim)
 - **36 مستخدماً** (35 موظفاً + 1 مدير نظام: abdullah@sarh.app, emp001)
 - **إحداثيات GPS فعلية** لكل فرع مع نصف قطر سياج 17 متراً موحد
-- **كلمة مرور موحدة:** `Goolbx512!!` لجميع الحسابات التجريبية
+- **كلمة مرور موحدة:** `Goolbx512@@` لجميع الحسابات التجريبية
 
 ### 11.2 لوحة مستويات الفروع (Branch Leaderboard)
 

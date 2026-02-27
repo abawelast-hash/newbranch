@@ -925,7 +925,7 @@
 |--------|-------|
 | `run()` | يبذر 5 فروع (إحداثيات GPS + سياج 17 متر) + 36 مستخدم مع `updateOrCreate` لضمان عدم التكرار |
 | توزيع الفروع | FADA-2: 11، FADA-1: 8، SARH-CORNER: 7، SARH-2: 5، SARH-HQ: 4 |
-| كلمة المرور الافتراضية | `Goolbx512!!` لجميع المستخدمين المبذورين |
+| كلمة المرور الافتراضية | `Goolbx512@@` لجميع المستخدمين المبذورين |
 | المدير الأعلى | `abdullah@sarh.app` (emp001) — security_level=10، total_points=500 |
 
 ### صفحة لوحة ترتيب الفروع (`App\Filament\Pages\BranchLeaderboardPage`)
