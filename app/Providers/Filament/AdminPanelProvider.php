@@ -45,19 +45,19 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogoHeight('2.5rem')
             ->favicon(fn () => Setting::instance()->favicon_url)
             ->colors([
-                // SARH Neo: Violet-Indigo Admin Theme
+                // SARH: Orange Primary (Facebook-style)
                 'primary' => [
-                    50  => '#F5F3FF',
-                    100 => '#EDE9FE',
-                    200 => '#DDD6FE',
-                    300 => '#C4B5FD',
-                    400 => '#A78BFA',
-                    500 => '#8B5CF6',
-                    600 => '#7C3AED',
-                    700 => '#6D28D9',
-                    800 => '#5B21B6',
-                    900 => '#4C1D95',
-                    950 => '#2E1065',
+                    50  => '#FFF7ED',
+                    100 => '#FFEDD5',
+                    200 => '#FED7AA',
+                    300 => '#FDBA74',
+                    400 => '#FB923C',
+                    500 => '#F97316',
+                    600 => '#EA580C',
+                    700 => '#C2410C',
+                    800 => '#9A3412',
+                    900 => '#7C2D12',
+                    950 => '#431407',
                 ],
                 'danger'  => Color::Red,
                 'warning' => Color::Amber,
