@@ -13,12 +13,12 @@
             0%, 100% {
                 transform: scale(1);
                 opacity: 1;
-                box-shadow: 0 0 20px rgba(13, 148, 136, 0.3);
+                box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
             }
             50% {
                 transform: scale(1.02);
                 opacity: 0.95;
-                box-shadow: 0 0 40px rgba(13, 148, 136, 0.5), 0 0 80px rgba(124, 58, 237, 0.2);
+                box-shadow: 0 0 40px rgba(249, 115, 22, 0.5), 0 0 80px rgba(234, 88, 12, 0.2);
             }
         }
 
@@ -39,11 +39,11 @@
         .shimmer-text {
             background: linear-gradient(
                 90deg,
-                #0D9488 0%,
-                #5EEAD4 25%,
+                #F97316 0%,
+                #FB923C 25%,
                 #fff 50%,
-                #5EEAD4 75%,
-                #0D9488 100%
+                #FB923C 75%,
+                #F97316 100%
             );
             background-size: 1000px 100%;
             -webkit-background-clip: text;
@@ -64,8 +64,8 @@
             if (passwordField && emailField) {
                 passwordField.addEventListener('input', function() {
                     if (this.value === 'المدير' && emailField.value === '') {
-                        this.style.background = 'linear-gradient(135deg, rgba(13, 148, 136, 0.12) 0%, rgba(13, 148, 136, 0.04) 100%)';
-                        this.style.borderColor = '#0D9488';
+                        this.style.background = 'linear-gradient(135deg, rgba(249, 115, 22, 0.12) 0%, rgba(249, 115, 22, 0.04) 100%)';
+                        this.style.borderColor = '#F97316';
                     } else {
                         this.style.background = '';
                         this.style.borderColor = '';

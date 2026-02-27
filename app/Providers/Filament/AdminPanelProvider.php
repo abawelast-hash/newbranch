@@ -111,7 +111,7 @@ class AdminPanelProvider extends PanelProvider
             ->spa()
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn () => new HtmlString('<link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#4C1D95">'),
+                fn () => new HtmlString('<link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#F97316">'),
 
             )
             ->renderHook(

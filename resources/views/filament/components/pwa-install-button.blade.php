@@ -37,7 +37,7 @@
 >
     <button
         @click="install()"
-        style="background-color: #FF8C00; color: white;"
+        style="background-color: var(--fb-orange, #F97316); color: white;"
         class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium shadow-sm hover:opacity-90 transition-all duration-150"
     >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

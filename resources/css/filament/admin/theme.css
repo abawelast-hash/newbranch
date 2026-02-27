@@ -171,7 +171,7 @@ body { -webkit-font-smoothing:antialiased; background:var(--fb-bg) !important; c
 .fi-wi-stats-overview-stat:nth-child(3)::before { background: var(--fb-orange-light); }
 .fi-wi-stats-overview-stat:nth-child(4)::before { background: #EF4444; }
 .fi-wi-stats-overview-stat:nth-child(5)::before { background: #10B981; }
-.fi-wi-stats-overview-stat:nth-child(6)::before { background: #A855F7; }
+.fi-wi-stats-overview-stat:nth-child(6)::before { background: #F59E0B; }
 .fi-wi-stats-overview-stat:hover {
     box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
     transform: translateY(-2px) !important;

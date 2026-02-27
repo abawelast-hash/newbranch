@@ -4,8 +4,8 @@
     <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
-                    <x-heroicon-o-chart-bar class="w-5 h-5 text-emerald-600" />
+                <div class="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
+                    <x-heroicon-o-chart-bar class="w-5 h-5 text-orange-600" />
                 </div>
                 <div>
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ __('analytics.efficiency_score_card') }}</h3>

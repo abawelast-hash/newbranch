@@ -9,7 +9,7 @@
     {{-- My Branch Rank --}}
     @if($myBranch)
     <div class="mb-4 p-3 rounded-xl border-2 {{ match($myBranchLevel) {
-        'legendary' => 'border-purple-400 bg-purple-50',
+        'legendary' => 'border-amber-400 bg-amber-50',
         'diamond'   => 'border-cyan-400 bg-cyan-50',
         'gold'      => 'border-yellow-400 bg-yellow-50',
         'silver'    => 'border-gray-300 bg-gray-50',
@@ -19,7 +19,7 @@
         <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
                 <span class="text-2xl font-bold {{ match($myBranchLevel) {
-                    'legendary' => 'text-purple-600',
+                    'legendary' => 'text-amber-600',
                     'diamond'   => 'text-cyan-600',
                     'gold'      => 'text-yellow-600',
                     'silver'    => 'text-gray-500',
@@ -43,7 +43,7 @@
                     @endswitch
                 </div>
                 <div class="text-xs font-medium {{ match($myBranchLevel) {
-                    'legendary' => 'text-purple-600',
+                    'legendary' => 'text-amber-600',
                     'diamond'   => 'text-cyan-600',
                     'gold'      => 'text-yellow-600',
                     'silver'    => 'text-gray-500',

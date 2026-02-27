@@ -2,8 +2,8 @@
     {{-- Welcome Header --}}
     <div class="card">
         <div class="flex items-center gap-4">
-            <div class="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center">
-                <span class="text-2xl font-bold text-emerald-700">{{ mb_substr(auth()->user()->name_ar ?? 'U', 0, 1) }}</span>
+            <div class="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center">
+                <span class="text-2xl font-bold text-orange-700">{{ mb_substr(auth()->user()->name_ar ?? 'U', 0, 1) }}</span>
             </div>
             <div>
                 <h2 class="text-xl font-bold text-gray-800">{{ __('pwa.welcome') }}، {{ auth()->user()->name_ar }}</h2>

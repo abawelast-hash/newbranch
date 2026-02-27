@@ -7,7 +7,7 @@
             </svg>
         </a>
         <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold
-            {{ $conversation->type === 'group' ? 'bg-purple-500' : 'bg-emerald-500' }}">
+            {{ $conversation->type === 'group' ? 'bg-orange-500' : 'bg-orange-400' }}">
             @if($conversation->type === 'group')
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -44,15 +44,15 @@
 
                 <div class="rounded-2xl px-4 py-2.5 shadow-sm
                     {{ $message->sender_id === auth()->id()
-                        ? 'bg-emerald-500 text-white rounded-ee-md'
+                        ? 'bg-orange-500 text-white rounded-ee-md'
                         : 'bg-white text-gray-800 rounded-es-md' }}">
                     <p class="text-sm leading-relaxed">{{ $message->body }}</p>
                     <div class="flex items-center justify-end gap-1 mt-1">
-                        <span class="text-[10px] {{ $message->sender_id === auth()->id() ? 'text-emerald-100' : 'text-gray-400' }}">
+                        <span class="text-[10px] {{ $message->sender_id === auth()->id() ? 'text-orange-100' : 'text-gray-400' }}">
                             {{ $message->created_at->format('H:i') }}
                         </span>
                         @if($message->sender_id === auth()->id())
-                        <span class="text-[10px] {{ $message->is_read ? 'text-blue-200' : 'text-emerald-200' }}">
+                        <span class="text-[10px] {{ $message->is_read ? 'text-blue-200' : 'text-orange-200' }}">
                             @if($message->is_read)
                                 <svg class="w-3.5 h-3.5 inline" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41zM.41 13.41L6 19l1.41-1.41L1.83 12 .41 13.41z"/>

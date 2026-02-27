@@ -56,19 +56,19 @@
     {{-- Stats Grid --}}
     @if($branchName)
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 bg-white dark:bg-gray-900">
-        <div class="text-center p-3 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-emerald-950/30 dark:to-green-950/30 border border-green-200 dark:border-emerald-800/30 animate-scaleIn" style="animation-delay: 0.15s">
-            <div class="text-2xl font-bold {{ $attendanceRate >= 90 ? 'text-emerald-600' : ($attendanceRate >= 70 ? 'text-amber-500' : 'text-red-500') }}">
+        <div class="text-center p-3 rounded-xl bg-gradient-to-br from-green-50 to-orange-50 dark:from-orange-950/30 dark:to-green-950/30 border border-green-200 dark:border-green-800/30 animate-scaleIn" style="animation-delay: 0.15s">
+            <div class="text-2xl font-bold {{ $attendanceRate >= 90 ? 'text-orange-600' : ($attendanceRate >= 70 ? 'text-amber-500' : 'text-red-500') }}">
                 {{ $attendanceRate }}%
             </div>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">{{ __('pwa.branch_attendance_rate') }}</div>
         </div>
         <div class="text-center p-3 rounded-xl bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 border border-red-200 dark:border-red-800/30 animate-scaleIn" style="animation-delay: 0.2s">
-            <div class="text-2xl font-bold {{ $branchDelayCost > 0 ? 'text-red-500' : 'text-emerald-600' }}">
+            <div class="text-2xl font-bold {{ $branchDelayCost > 0 ? 'text-red-500' : 'text-orange-600' }}">
                 {{ number_format($branchDelayCost, 0) }}
             </div>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">{{ __('competition.financial_loss') }}</div>
         </div>
-        <div class="text-center p-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-800/30 animate-scaleIn" style="animation-delay: 0.25s">
+        <div class="text-center p-3 rounded-xl bg-gradient-to-br from-blue-50 to-orange-50 dark:from-blue-950/30 dark:to-orange-950/30 border border-blue-200 dark:border-blue-800/30 animate-scaleIn" style="animation-delay: 0.25s">
             <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ $perfectEmployees }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">{{ __('competition.perfect_employees') }}</div>
         </div>

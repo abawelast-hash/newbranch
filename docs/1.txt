@@ -1,0 +1,1300 @@
+
+### **المهمة: إصلاح الثغرات الأمنية الحرجة وإزالة التناقضات**
+
+```
+أنشئ حزمة إصلاح أمني شاملة للمرحلة الأولى تشمل:
+
+## 1. تنظيف البيانات الحساسة من المستودع
+قم بإنشاء سكريبت `security/cleanup.sh` يقوم بالآتي:
+- البحث عن جميع الملفات التي تحتوي على أنماط حساسة (passwords, keys, tokens)
+- استبدال القيم التالية في جميع الملفات:
+  - `Goolbx512@@` → `[REDACTED_PASSWORD]`
+  - `u307296675` → `[REDACTED_USER]`
+  - `194.164.74.250` → `[REDACTED_IP]`
+  - `abdullah@sarh.app` → `[REDACTED_EMAIL]`
+- إنشاء ملف `.gitattributes` لمنع تسريب الملفات الحساسة مستقبلاً:
+  ```
+  .env export-ignore
+  *.log export-ignore
+  *_key.txt export-ignore
+  ```
+
+## 2. تدوير جميع بيانات الاعتماد
+أنشئ وثيقة `security/credential_rotation.md` تحتوي:
+- خطوات تغيير كلمة مرور SSH لقناة 65002
+- خطوات تغيير كلمة مرور قاعدة البيانات `u307296675_sarh1`
+- خطوات تحديث مفتاح الـ APP_KEY في `.env`
+- سكريبت `php artisan key:generate --force` بعد التحديث
+
+## 3. إزالة نظام Trap بالكامل
+أنشئ Artisan command `php artisan system:remove-trap` يقوم بـ:
+```php
+// 3.1 حذف المسارات من routes/web.php
+protected function removeTrapRoutes()
+{
+    $path = base_path('routes/web.php');
+    $content = file_get_contents($path);
+    
+    // إزالة سطور المسارات
+    $patterns = [
+        "/Route::get\(['\"]\/trap\/\{id\}['\"].*?\);/",
+        "/Route::get\(['\"]\/trap\/analytics['\"].*?\);/",
+        "/Route::post\(['\"]\/trap\/\{id\}\/interact['\"].*?\);/"
+    ];
+    
+    foreach ($patterns as $pattern) {
+        $content = preg_replace($pattern, '', $content);
+    }
+    
+    file_put_contents($path, $content);
+}
+
+// 3.2 حذف جداول Trap
+protected function dropTrapTables()
+{
+    Schema::dropIfExists('trap_interactions');
+    Schema::dropIfExists('traps');
+}
+
+// 3.3 حذف ملفات النظام
+protected function deleteTrapFiles()
+{
+    $files = [
+        'app/Models/Trap.php',
+        'app/Models/TrapInteraction.php',
+        'app/Events/TrapTriggered.php',
+        'app/Listeners/LogTrapInteraction.php',
+        'app/Services/TrapResponseService.php',
+        'app/Http/Controllers/TrapController.php',
+        'app/Filament/Resources/TrapResource.php',
+        'app/Filament/Resources/TrapInteractionResource.php',
+        'app/Filament/Pages/TrapAuditPage.php',
+        'app/Filament/Widgets/RiskWidget.php',
+        'app/Filament/Widgets/IntegrityAlertHub.php'
+    ];
+    
+    foreach ($files as $file) {
+        if (File::exists($file)) {
+            File::delete($file);
+        }
+    }
+}
+```
+
+## 4. تصفية التعاميم حسب الصلاحيات
+أنشئ Policy و Scope للتعاميم:
+
+```php
+// 4.1 إنشاء CircularPolicy
+php artisan make:policy CircularPolicy --model=Circular
+
+// محتوى CircularPolicy.php
+public function view(User $user, Circular $circular)
+{
+    // المستوى 10 يرى الكل
+    if ($user->security_level === 10) {
+        return true;
+    }
+    
+    // تصفية حسب target_scope
+    return match($circular->target_scope) {
+        'all' => true,
+        'branch' => $user->branch_id === $circular->target_branch_id,
+        'department' => $user->department === $circular->target_department,
+        'role' => in_array($user->role, $circular->target_roles ?? []),
+        default => false
+    };
+}
+
+// 4.2 تحديث CircularsWidget.php
+public function getTableQuery(): Builder
+{
+    $query = Circular::query()->latest()->limit(5);
+    
+    if (auth()->user()->security_level < 10) {
+        $query->where(function ($q) {
+            $user = auth()->user();
+            $q->where('target_scope', 'all')
+              ->orWhere(function ($q) use ($user) {
+                  $q->where('target_scope', 'branch')
+                    ->where('target_branch_id', $user->branch_id);
+              })
+              ->orWhere(function ($q) use ($user) {
+                  $q->where('target_scope', 'department')
+                    ->where('target_department', $user->department);
+              })
+              ->orWhere(function ($q) use ($user) {
+                  $q->where('target_scope', 'role')
+                    ->whereJsonContains('target_roles', $user->role);
+              });
+        });
+    }
+    
+    return $query;
+}
+```
+
+## 5. إضافة Audit Log لـ God Mode
+أنشئ Service لتسجيل عمليات المستوى 10:
+
+```php
+// app/Services/GodModeAuditService.php
+class GodModeAuditService
+{
+    public function log(User $user, string $action, array $context = [])
+    {
+        if ($user->security_level === 10) {
+            GodModeLog::create([
+                'user_id' => $user->id,
+                'action' => $action,
+                'ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+                'context' => json_encode($context),
+                'created_at' => now()
+            ]);
+        }
+    }
+}
+
+// تحديث AppServiceProvider.php Gate::before
+Gate::before(function ($user, $ability) {
+    if ($user->security_level === 10) {
+        app(GodModeAuditService::class)->log($user, $ability);
+        return true;
+    }
+});
+```
+
+## التسليمات النهائية للمرحلة 1:
+- ✅ سكريبت security/cleanup.sh
+- ✅ وثيقة credential_rotation.md
+- ✅ Artisan command `system:remove-trap`
+- ✅ CircularPolicy مع tests
+- ✅ GodModeAuditService مع migrations
+- ✅ تحديث الوثائق (SOP files) بحذف أي ذكر لـ Trap
+```
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### **المهمة: حل مشاكل N+1 وتحسين أداء الاستعلامات**
+
+```
+أنشئ حزمة تحسين أداء شاملة للمرحلة الثانية تشمل:
+
+## 1. إعادة هيكلة AnalyticsService مع Query Objects
+قم بإنشاء نظام Query Objects للتحليلات:
+
+```php
+// app/Queries/Analytics/BaseAnalyticsQuery.php
+abstract class BaseAnalyticsQuery
+{
+    protected $cache = [];
+    protected $cacheTtl = 3600; // ساعة
+    
+    abstract public function get($branchId = null, $period = null);
+    
+    protected function cacheKey($key)
+    {
+        return "analytics." . class_basename($this) . "." . $key;
+    }
+    
+    protected function remember($key, $callback)
+    {
+        return Cache::remember($this->cacheKey($key), $this->cacheTtl, $callback);
+    }
+}
+
+// app/Queries/Analytics/AttendanceSummaryQuery.php
+class AttendanceSummaryQuery extends BaseAnalyticsQuery
+{
+    public function get($branchId = null, $month = null)
+    {
+        $key = $branchId . '_' . ($month ?? now()->month);
+        
+        return $this->remember($key, function() use ($branchId, $month) {
+            $month = $month ?? now()->month;
+            
+            return DB::table('attendance_logs')
+                ->select([
+                    'branch_id',
+                    DB::raw('COUNT(DISTINCT user_id) as total_employees'),
+                    DB::raw('SUM(CASE WHEN status = "on_time" THEN 1 ELSE 0 END) as on_time'),
+                    DB::raw('SUM(CASE WHEN status = "late" THEN 1 ELSE 0 END) as late'),
+                    DB::raw('SUM(CASE WHEN status = "absent" THEN 1 ELSE 0 END) as absent'),
+                    DB::raw('SUM(cost) as total_cost'),
+                    DB::raw('AVG(TIMESTAMPDIFF(MINUTE, check_in, check_out)) as avg_duration')
+                ])
+                ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+                ->whereMonth('created_at', $month)
+                ->groupBy('branch_id')
+                ->get();
+        });
+    }
+}
+
+// app/Queries/Analytics/BranchPerformanceQuery.php
+class BranchPerformanceQuery extends BaseAnalyticsQuery
+{
+    public function get($branchId = null, $year = null)
+    {
+        $year = $year ?? now()->year;
+        $key = ($branchId ?? 'all') . '_' . $year;
+        
+        return $this->remember($key, function() use ($branchId, $year) {
+            $query = DB::table('attendance_logs')
+                ->select([
+                    'branch_id',
+                    DB::raw('YEAR(created_at) as year'),
+                    DB::raw('MONTH(created_at) as month'),
+                    DB::raw('COUNT(*) as total_logs'),
+                    DB::raw('SUM(cost) as monthly_cost')
+                ])
+                ->whereYear('created_at', $year)
+                ->groupBy('branch_id', DB::raw('YEAR(created_at)'), DB::raw('MONTH(created_at)'));
+            
+            if ($branchId) {
+                $query->where('branch_id', $branchId);
+            }
+            
+            return $query->get();
+        });
+    }
+}
+```
+
+## 2. تحسين BranchLeaderboardPage
+أعد كتابة صفحة ترتيب الفروع:
+
+```php
+// app/Filament/Pages/BranchLeaderboardPage.php
+class BranchLeaderboardPage extends Page
+{
+    protected function getViewData(): array
+    {
+        // استعلام واحد مجمع بدلاً من N+1
+        $branches = Branch::withCount([
+            'users as total_employees' => fn($q) => $q->where('is_active', true)
+        ])->get();
+        
+        $currentMonth = now()->month;
+        $currentYear = now()->year;
+        
+        // تجميع إحصائيات الشهر الحالي لكل الفروع دفعة واحدة
+        $stats = DB::table('attendance_logs')
+            ->select([
+                'branch_id',
+                DB::raw('COUNT(DISTINCT user_id) as attending_employees'),
+                DB::raw('SUM(CASE WHEN status = "late" THEN 1 ELSE 0 END) as late_count'),
+                DB::raw('SUM(CASE WHEN status = "absent" THEN 1 ELSE 0 END) as absent_count'),
+                DB::raw('SUM(cost) as total_loss')
+            ])
+            ->whereMonth('created_at', $currentMonth)
+            ->whereYear('created_at', $currentYear)
+            ->groupBy('branch_id')
+            ->get()
+            ->keyBy('branch_id');
+        
+        // تجميع النقاط
+        $points = DB::table('competition_points')
+            ->select([
+                'branch_id',
+                DB::raw('SUM(points) as total_points')
+            ])
+            ->whereMonth('created_at', $currentMonth)
+            ->whereYear('created_at', $currentYear)
+            ->groupBy('branch_id')
+            ->get()
+            ->keyBy('branch_id');
+        
+        // دمج البيانات
+        foreach ($branches as $branch) {
+            $branchStats = $stats[$branch->id] ?? (object)[
+                'attending_employees' => 0,
+                'late_count' => 0,
+                'absent_count' => 0,
+                'total_loss' => 0
+            ];
+            
+            $branchPoints = $points[$branch->id]->total_points ?? 0;
+            
+            $branch->performance = [
+                'attendance_rate' => $branch->total_employees > 0 
+                    ? round(($branchStats->attending_employees / $branch->total_employees) * 100, 2)
+                    : 0,
+                'late_rate' => $branchStats->late_count,
+                'loss' => $branchStats->total_loss,
+                'points' => $branchPoints
+            ];
+        }
+        
+        return [
+            'branches' => $branches->sortByDesc('performance.points')
+        ];
+    }
+}
+```
+
+## 3. تحسين DailyNewsTicker
+```php
+// app/Filament/Widgets/DailyNewsTicker.php
+class DailyNewsTicker extends Widget
+{
+    protected function getNews(): array
+    {
+        // جلب آخر 10 أحداث دفعة واحدة مع المستخدمين
+        $activities = ActivityLog::with('causer')
+            ->latest()
+            ->limit(10)
+            ->get();
+        
+        return $activities->map(function ($activity) {
+            $user = $activity->causer;
+            
+            return [
+                'time' => $activity->created_at->diffForHumans(),
+                'user' => $user ? $user->name : 'System',
+                'action' => $activity->description,
+                'branch' => $user?->branch->name ?? 'N/A'
+            ];
+        })->toArray();
+    }
+}
+```
+
+## 4. تحسين Jobs باستخدام chunkById
+```php
+// app/Jobs/SendCircularJob.php
+class SendCircularJob implements ShouldQueue
+{
+    public function handle()
+    {
+        $circular = $this->circular;
+        
+        // بناء الاستعلام
+        $query = User::query()->where('is_active', true);
+        
+        // تطبيق target_scope
+        switch($circular->target_scope) {
+            case 'branch':
+                $query->where('branch_id', $circular->target_branch_id);
+                break;
+            case 'department':
+                $query->where('department', $circular->target_department);
+                break;
+            case 'role':
+                $query->whereIn('role', $circular->target_roles ?? []);
+                break;
+        }
+        
+        // معالجة بالدفعات
+        $query->chunkById(100, function ($users) use ($circular) {
+            $deliveries = [];
+            
+            foreach ($users as $user) {
+                $deliveries[] = [
+                    'circular_id' => $circular->id,
+                    'user_id' => $user->id,
+                    'delivered_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ];
+            }
+            
+            // إدراج جماعي
+            CircularDelivery::insert($deliveries);
+            
+            // تحديث progress
+            $circular->increment('processed_count', count($deliveries));
+            
+            // إرسال إشعارات (يمكن جدولتها لاحقاً)
+            foreach ($users as $user) {
+                Notification::send($user, new CircularNotification($circular));
+            }
+        });
+        
+        $circular->update(['status' => 'completed']);
+    }
+}
+```
+
+## التسليمات النهائية للمرحلة 2:
+- ✅ 3+ Query Objects للتحليلات
+- ✅ BranchLeaderboardPage محسّن
+- ✅ DailyNewsTicker محسّن
+- ✅ SendCircularJob مع chunkById
+- ✅ RecalculateMonthlyAttendanceJob محسّن
+- ✅ تقرير مقارنة الأداء قبل/بعد
+```
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### **المهمة: تصحيح منطق العمل وإضافة سياسات الحوكمة**
+
+```
+أنشئ حزمة تصحيح منطق العمل للمرحلة الثالثة تشمل:
+
+## 1. نظام Streak متكامل مع العطل والإجازات
+```php
+// app/Services/StreakCalculator.php
+class StreakCalculator
+{
+    protected $holidayService;
+    protected $leaveService;
+    
+    public function __construct(
+        HolidayService $holidayService,
+        LeaveService $leaveService
+    ) {
+        $this->holidayService = $holidayService;
+        $this->leaveService = $leaveService;
+    }
+    
+    public function calculate(User $user, Carbon $endDate = null): StreakResult
+    {
+        $endDate = $endDate ?? now();
+        $streak = 0;
+        $currentDate = $endDate->copy();
+        $workingDaysOnly = []; // أيام العمل الفعلية
+        
+        while (true) {
+            // التحقق من العطل والإجازات
+            if ($this->holidayService->isHoliday($currentDate)) {
+                $workingDaysOnly[] = [
+                    'date' => $currentDate->copy(),
+                    'type' => 'holiday',
+                    'counts' => false
+                ];
+                $currentDate->subDay();
+                continue;
+            }
+            
+            if ($this->leaveService->isOnApprovedLeave($user, $currentDate)) {
+                $workingDaysOnly[] = [
+                    'date' => $currentDate->copy(),
+                    'type' => 'leave',
+                    'leave_type' => $this->leaveService->getLeaveType($user, $currentDate),
+                    'counts' => false
+                ];
+                $currentDate->subDay();
+                continue;
+            }
+            
+            // التحقق من الحضور
+            $attendance = AttendanceLog::where('user_id', $user->id)
+                ->whereDate('check_in', $currentDate)
+                ->whereIn('status', ['on_time', 'late'])
+                ->first();
+            
+            if (!$attendance) {
+                break;
+            }
+            
+            $workingDaysOnly[] = [
+                'date' => $currentDate->copy(),
+                'type' => 'workday',
+                'status' => $attendance->status,
+                'counts' => true
+            ];
+            
+            $streak++;
+            $currentDate->subDay();
+        }
+        
+        return new StreakResult(
+            streak: $streak,
+            history: array_reverse($workingDaysOnly),
+            startDate: $currentDate->addDay(),
+            endDate: $endDate
+        );
+    }
+}
+
+// app/ValueObjects/StreakResult.php
+class StreakResult
+{
+    public function __construct(
+        public int $streak,
+        public array $history,
+        public Carbon $startDate,
+        public Carbon $endDate
+    ) {}
+    
+    public function toArray(): array
+    {
+        return [
+            'streak' => $this->streak,
+            'start_date' => $this->startDate->format('Y-m-d'),
+            'end_date' => $this->endDate->format('Y-m-d'),
+            'working_days' => collect($this->history)->where('counts', true)->count(),
+            'excluded_days' => collect($this->history)->where('counts', false)->count(),
+            'history' => $this->history
+        ];
+    }
+}
+
+// app/Services/HolidayService.php
+class HolidayService
+{
+    protected $cache = [];
+    
+    public function isHoliday(Carbon $date): bool
+    {
+        $key = $date->format('Y-m-d');
+        
+        if (!isset($this->cache[$key])) {
+            $this->cache[$key] = OfficialHoliday::whereDate('date', $date)->exists()
+                || $this->isWeekend($date);
+        }
+        
+        return $this->cache[$key];
+    }
+    
+    protected function isWeekend(Carbon $date): bool
+    {
+        // يمكن جعل أيام العطل الأسبوعية قابلة للتكوين
+        return in_array($date->dayOfWeek, [Carbon::FRIDAY, Carbon::SATURDAY]);
+    }
+}
+```
+
+## 2. نظام شامل للسياسات (Policies)
+أنشئ Policies لكل الموارد:
+
+```bash
+# إنشاء السياسات
+php artisan make:policy BranchPolicy --model=Branch
+php artisan make:policy CircularPolicy --model=Circular
+php artisan make:policy ReportPolicy --model=Report
+php artisan make:policy LeavePolicy --model=Leave
+php artisan make:policy AttendanceLogPolicy --model=AttendanceLog
+```
+
+```php
+// app/Providers/AuthServiceProvider.php
+protected $policies = [
+    Branch::class => BranchPolicy::class,
+    Circular::class => CircularPolicy::class,
+    Report::class => ReportPolicy::class,
+    Leave::class => LeavePolicy::class,
+    AttendanceLog::class => AttendanceLogPolicy::class,
+];
+
+// app/Policies/BranchPolicy.php - مثال
+class BranchPolicy
+{
+    use HandlesAuthorization;
+    
+    public function viewAny(User $user): bool
+    {
+        return $user->security_level >= 4;
+    }
+    
+    public function view(User $user, Branch $branch): bool
+    {
+        return $user->security_level >= 10 
+            || $user->branch_id === $branch->id
+            || $user->managed_branches->contains($branch->id);
+    }
+    
+    public function create(User $user): bool
+    {
+        return $user->security_level >= 8;
+    }
+    
+    public function update(User $user, Branch $branch): bool
+    {
+        return $user->security_level >= 9
+            || ($user->security_level >= 7 && $user->branch_id === $branch->id);
+    }
+    
+    public function delete(User $user, Branch $branch): bool
+    {
+        return $user->security_level >= 10;
+    }
+}
+```
+
+## 3. تحسين توليد employee_id
+```php
+// app/Models/User.php
+protected static function booted()
+{
+    static::creating(function ($user) {
+        if (empty($user->employee_id)) {
+            $user->employee_id = static::generateUniqueEmployeeId();
+        }
+    });
+}
+
+protected static function generateUniqueEmployeeId(): string
+{
+    do {
+        // استخدام التاريخ + رقم عشوائي + حرف تحقق
+        $date = now()->format('ymd');
+        $random = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+        $checkDigit = static::calculateCheckDigit($date . $random);
+        $employeeId = "EMP-{$date}-{$random}-{$checkDigit}";
+    } while (static::where('employee_id', $employeeId)->exists());
+    
+    return $employeeId;
+}
+
+protected static function calculateCheckDigit(string $base): string
+{
+    // خوارزمية بسيطة للتحقق (Luhn-like)
+    $sum = 0;
+    for ($i = 0; $i < strlen($base); $i++) {
+        $digit = (int) $base[$i];
+        if ($i % 2 == 0) {
+            $digit *= 2;
+            if ($digit > 9) $digit -= 9;
+        }
+        $sum += $digit;
+    }
+    return (string) ((10 - ($sum % 10)) % 10);
+}
+```
+
+## التسليمات النهائية للمرحلة 3:
+- ✅ StreakCalculator مع Holiday/Leave Services
+- ✅ 5+ Policies شاملة
+- ✅ نظام توليد employee_id مقاوم للتصادم
+- ✅ اختبارات وحدة لجميع الحالات
+- ✅ تحديث AttendanceStatsWidget
+```
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### **المهمة: استبدال eval بمحرك آمن وإضافة طبقة تحقق**
+
+```
+أنشئ حزمة تحسين جودة الصيغ للمرحلة الرابعة تشمل:
+
+## 1. محرك تعبيرات رياضي آمن (بدون eval)
+```php
+// app/Services/SafeExpressionEngine.php
+class SafeExpressionEngine
+{
+    protected $allowedFunctions = [
+        'sum', 'avg', 'count', 'min', 'max', 'round',
+        'abs', 'ceil', 'floor', 'sqrt', 'power'
+    ];
+    
+    protected $allowedOperators = ['+', '-', '*', '/', '(', ')', ','];
+    
+    protected $maxLength = 500;
+    protected $maxNesting = 10;
+    
+    public function evaluate(string $expression, array $data = [])
+    {
+        // 1. التحقق من الطول
+        if (strlen($expression) > $this->maxLength) {
+            throw new ExpressionTooLongException();
+        }
+        
+        // 2. تنظيف التعبير
+        $clean = $this->sanitize($expression);
+        
+        // 3. التحقق من الصيغة
+        $this->validateSyntax($clean);
+        
+        // 4. تحويل إلى RPN (Reverse Polish Notation)
+        $rpn = $this->toRPN($clean);
+        
+        // 5. تقييم RPN بأمان
+        return $this->evaluateRPN($rpn, $data);
+    }
+    
+    protected function sanitize(string $expr): string
+    {
+        // إزالة أي أحرف غير مسموحة
+        $expr = preg_replace('/[^0-9\s\+\-\*\/\(\)\.\,\w]/', '', $expr);
+        
+        // استبدال أسماء الحقول بقيمها
+        return $expr;
+    }
+    
+    protected function validateSyntax(string $expr): void
+    {
+        // التحقق من توازن الأقواس
+        $balance = 0;
+        $nesting = 0;
+        
+        for ($i = 0; $i < strlen($expr); $i++) {
+            if ($expr[$i] === '(') {
+                $balance++;
+                $nesting++;
+                if ($nesting > $this->maxNesting) {
+                    throw new ExpressionTooComplexException();
+                }
+            } elseif ($expr[$i] === ')') {
+                $balance--;
+                $nesting--;
+            }
+        }
+        
+        if ($balance !== 0) {
+            throw new UnbalancedParenthesesException();
+        }
+    }
+    
+    protected function toRPN(string $expr): array
+    {
+        // Shunting-yard algorithm
+        $output = [];
+        $operators = [];
+        $precedence = ['+' => 1, '-' => 1, '*' => 2, '/' => 2];
+        
+        $tokens = token_get_all('<?php ' . $expr);
+        
+        foreach ($tokens as $token) {
+            if (is_array($token)) {
+                switch ($token[0]) {
+                    case T_LNUMBER:
+                    case T_DNUMBER:
+                        $output[] = ['type' => 'number', 'value' => $token[1]];
+                        break;
+                    case T_STRING:
+                        if (in_array($token[1], $this->allowedFunctions)) {
+                            $operators[] = ['type' => 'function', 'name' => $token[1]];
+                        }
+                        break;
+                }
+            } else {
+                // Operators and parentheses
+                if (in_array($token, array_keys($precedence))) {
+                    while (!empty($operators) && 
+                           end($operators)['type'] === 'operator' &&
+                           $precedence[end($operators)['value']] >= $precedence[$token]) {
+                        $output[] = array_pop($operators);
+                    }
+                    $operators[] = ['type' => 'operator', 'value' => $token];
+                } elseif ($token === '(') {
+                    $operators[] = ['type' => 'paren', 'value' => '('];
+                } elseif ($token === ')') {
+                    while (!empty($operators) && end($operators)['value'] !== '(') {
+                        $output[] = array_pop($operators);
+                    }
+                    array_pop($operators); // Remove '('
+                    
+                    // Check for function
+                    if (!empty($operators) && end($operators)['type'] === 'function') {
+                        $output[] = array_pop($operators);
+                    }
+                }
+            }
+        }
+        
+        while (!empty($operators)) {
+            $output[] = array_pop($operators);
+        }
+        
+        return $output;
+    }
+    
+    protected function evaluateRPN(array $rpn, array $data): float
+    {
+        $stack = [];
+        
+        foreach ($rpn as $token) {
+            switch ($token['type']) {
+                case 'number':
+                    $stack[] = (float) $token['value'];
+                    break;
+                    
+                case 'operator':
+                    $b = array_pop($stack);
+                    $a = array_pop($stack);
+                    
+                    switch ($token['value']) {
+                        case '+': $stack[] = $a + $b; break;
+                        case '-': $stack[] = $a - $b; break;
+                        case '*': $stack[] = $a * $b; break;
+                        case '/': 
+                            if ($b == 0) throw new DivisionByZeroException();
+                            $stack[] = $a / $b; 
+                            break;
+                    }
+                    break;
+                    
+                case 'function':
+                    $args = [];
+                    for ($i = 0; $i < $token['arg_count'] ?? 1; $i++) {
+                        $args[] = array_pop($stack);
+                    }
+                    $args = array_reverse($args);
+                    
+                    $stack[] = $this->callFunction($token['name'], $args, $data);
+                    break;
+            }
+        }
+        
+        return $stack[0] ?? 0;
+    }
+    
+    protected function callFunction(string $name, array $args, array $data): float
+    {
+        return match($name) {
+            'sum' => array_sum($args),
+            'avg' => array_sum($args) / count($args),
+            'count' => count($args),
+            'min' => min($args),
+            'max' => max($args),
+            'round' => round($args[0], $args[1] ?? 0),
+            'abs' => abs($args[0]),
+            'ceil' => ceil($args[0]),
+            'floor' => floor($args[0]),
+            'sqrt' => sqrt($args[0]),
+            'power' => pow($args[0], $args[1] ?? 1),
+            default => 0
+        };
+    }
+}
+```
+
+## 2. نموذج Formula مع التحقق
+```php
+// app/Models/ReportFormula.php
+class ReportFormula extends Model
+{
+    protected $casts = [
+        'is_active' => 'boolean',
+        'validation_rules' => 'array'
+    ];
+    
+    protected static function booted()
+    {
+        static::saving(function ($formula) {
+            // التحقق من الصيغة قبل الحفظ
+            app(SafeExpressionEngine::class)->validate($formula->expression);
+            
+            // تخزين hash للصيغة للمقارنة السريعة
+            $formula->expression_hash = md5($formula->expression);
+        });
+    }
+    
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+}
+
+// app/Filament/Resources/ReportFormulaResource.php
+public static function form(Form $form): Form
+{
+    return $form
+        ->schema([
+            TextInput::make('name')
+                ->required()
+                ->maxLength(255),
+            
+            Textarea::make('expression')
+                ->required()
+                ->maxLength(500)
+                ->helperText('استخدم: + - * / ( ) والمتغيرات: cost, hours, employees')
+                ->rules([
+                    'required',
+                    'max:500',
+                    function ($attribute, $value, $fail) {
+                        try {
+                            app(SafeExpressionEngine::class)->validate($value);
+                        } catch (\Exception $e) {
+                            $fail('صيغة غير صالحة: ' . $e->getMessage());
+                        }
+                    }
+                ]),
+            
+            Toggle::make('is_active')
+                ->default(true),
+            
+            KeyValue::make('validation_rules')
+                ->keyLabel('متغير')
+                ->valueLabel('مدى مسموح')
+        ]);
+}
+```
+
+## 3. اختبارات وحدة شاملة
+```php
+// tests/Unit/SafeExpressionEngineTest.php
+class SafeExpressionEngineTest extends TestCase
+{
+    protected SafeExpressionEngine $engine;
+    
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->engine = app(SafeExpressionEngine::class);
+    }
+    
+    /** @test */
+    public function it_evaluates_basic_arithmetic()
+    {
+        $this->assertEquals(10, $this->engine->evaluate('5 + 5'));
+        $this->assertEquals(15, $this->engine->evaluate('3 * 5'));
+        $this->assertEquals(2, $this->engine->evaluate('10 / 5'));
+    }
+    
+    /** @test */
+    public function it_rejects_malicious_code()
+    {
+        $this->expectException(InvalidExpressionException::class);
+        $this->engine->evaluate('5 + system("rm -rf /")');
+    }
+    
+    /** @test */
+    public function it_handles_variables()
+    {
+        $data = ['cost' => 100, 'hours' => 8];
+        $this->assertEquals(800, $this->engine->evaluate('cost * hours', $data));
+    }
+    
+    /** @test */
+    public function it_prevents_division_by_zero()
+    {
+        $this->expectException(DivisionByZeroException::class);
+        $this->engine->evaluate('10 / 0');
+    }
+    
+    /** @test */
+    public function it_limits_expression_length()
+    {
+        $longExpr = str_repeat('1+', 300) . '1';
+        $this->expectException(ExpressionTooLongException::class);
+        $this->engine->evaluate($longExpr);
+    }
+}
+```
+
+## التسليمات النهائية للمرحلة 4:
+- ✅ SafeExpressionEngine (بدون eval)
+- ✅ نموذج ReportFormula مع validation
+- ✅ Filament Resource محدث
+- ✅ 10+ اختبارات وحدة
+- ✅ تقرير أمان الصيغ
+```

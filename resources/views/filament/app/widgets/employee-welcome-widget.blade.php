@@ -3,10 +3,10 @@
     <x-filament::section>
         <div class="flex items-center justify-between gap-x-4" dir="rtl">
             <div class="flex-1">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white" style="font-family: 'Cairo', sans-serif;">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">
                     بوابة الموظفين — نظام سهر
                 </h2>
-                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400" style="font-family: 'Cairo', sans-serif;">
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
                     {{ $todayDate }}
                 </p>
 
