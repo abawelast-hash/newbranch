@@ -6,9 +6,9 @@
 
 set -e
 
-SERVER="u850419603@145.223.119.139"
+SERVER="u307296675@194.164.74.250"
 PORT="65002"
-PROJECT_PATH="/home/u850419603/sarh"
+PROJECT_PATH="/home/u307296675/sarh"
 
 echo "🚀 بدء النشر..."
 
@@ -31,4 +31,4 @@ ssh -p $PORT $SERVER "cd $PROJECT_PATH && \
 
 echo ""
 echo "✅ النشر مكتمل!"
-echo "   🔗 https://sarh.online"
+echo "   🔗 https://sarh.io"

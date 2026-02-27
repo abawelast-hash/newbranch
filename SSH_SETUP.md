@@ -12,7 +12,7 @@
 ./setup-ssh-key.sh
 
 # 2. عند طلب كلمة المرور، أدخل:
-Goolbx512!!
+Goolbx512@@
 
 # 3. انتهى! الآن لن يطلب كلمة المرور مرة أخرى
 ```
@@ -40,11 +40,11 @@ Goolbx512!!
 
 ```bash
 # إنشاء ملف محمي
-echo "Goolbx512!!" > ~/.ssh/sarh_password
+echo "Goolbx512@@" > ~/.ssh/sarh_password
 chmod 600 ~/.ssh/sarh_password
 
 # استخدامه
-sshpass -f ~/.ssh/sarh_password ssh -p 65002 u850419603@145.223.119.139
+sshpass -f ~/.ssh/sarh_password ssh -p 65002 u307296675@194.164.74.250
 ```
 
 ---
@@ -52,11 +52,11 @@ sshpass -f ~/.ssh/sarh_password ssh -p 65002 u850419603@145.223.119.139
 ## بيانات الاتصال
 
 ```
-Host: 145.223.119.139
+Host: 194.164.74.250
 Port: 65002
-User: u850419603
-Pass: Goolbx512!!
-Path: /home/u850419603/sarh
+User: u307296675
+Pass: Goolbx512@@
+Path: /home/u307296675/sarh
 ```
 
 ---

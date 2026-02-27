@@ -3,21 +3,21 @@
 # SARH AL-ITQAN — One-Command Deploy Script
 # Usage: bash deploy.sh          (first time + updates)
 # Repo:  https://github.com/ggoolbx0/sarh
-# Target: Hostinger (sarh.online)
-# Path:   domains/sarh.online/public_html (NOT ~/public_html)
+# Target: Hostinger (sarh.io)
+# Path:   domains/sarh.io/public_html (NOT ~/public_html)
 # Constitution: Zero-Patch Policy — No manual DB changes
 ###############################################################
 
 set -e
 
-PROJECT_DIR="/home/u850419603/sarh"
-DOMAIN_PUBLIC="/home/u850419603/domains/sarh.online/public_html"
+PROJECT_DIR="/home/u307296675/sarh"
+DOMAIN_PUBLIC="/home/u307296675/domains/sarh.io/public_html"
 REPO_URL="https://github.com/abawelast-hash/newbranch.git"
 
 echo ""
 echo "╔═══════════════════════════════════════════╗"
 echo "║   SARH AL-ITQAN — Production Deployment  ║"
-echo "║   sarh.online                             ║"
+echo "║   sarh.io                                 ║"
 echo "╚═══════════════════════════════════════════╝"
 echo ""
 
@@ -130,15 +130,15 @@ use Illuminate\Http\Request;
 define('LARAVEL_START', microtime(true));
 
 // Maintenance mode
-if (file_exists($maintenance = '/home/u850419603/sarh/storage/framework/maintenance.php')) {
+if (file_exists($maintenance = '/home/u307296675/sarh/storage/framework/maintenance.php')) {
     require $maintenance;
 }
 
 // Autoloader — absolute path to project
-require '/home/u850419603/sarh/vendor/autoload.php';
+require '/home/u307296675/sarh/vendor/autoload.php';
 
 // Bootstrap & handle request — absolute path to project
-(require_once '/home/u850419603/sarh/bootstrap/app.php')
+(require_once '/home/u307296675/sarh/bootstrap/app.php')
     ->handleRequest(Request::capture());
 BRIDGE
 

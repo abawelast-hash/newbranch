@@ -1,4 +1,4 @@
-# صرح الإتقان — دليل النشر على Hostinger (sarh.online)
+# صرح الإتقان — دليل النشر على Hostinger (sarh.io)
 > **التاريخ:** 2026-02-08 | **حالة قاعدة البيانات:** فارغة — تثبيت جديد
 
 ---
@@ -7,12 +7,12 @@
 
 | العنصر | القيمة |
 |--------|--------|
-| النطاق | `sarh.online` |
-| SSH | `ssh -p 65002 u850419603@145.223.119.139` |
-| مسار المشروع | `/home/u850419603/sarh` |
-| جذر الويب | `/home/u850419603/public_html` → رابط رمزي إلى `sarh/public` |
-| قاعدة البيانات | `u850419603_sarh` @ `127.0.0.1:3306` |
-| مستخدم قاعدة البيانات | `u850419603_sarh` |
+| النطاق | `sarh.io` |
+| SSH | `ssh -p 65002 u307296675@194.164.74.250` |
+| مسار المشروع | `/home/u307296675/sarh` |
+| جذر الويب | `/home/u307296675/public_html` → رابط رمزي إلى `sarh/public` |
+| قاعدة البيانات | `u307296675_sarh` @ `127.0.0.1:3306` |
+| مستخدم قاعدة البيانات | `u307296675_sarh` |
 | لوحة الإدارة | `https://sarh.online/admin` |
 
 ---
@@ -22,7 +22,7 @@
 ### 1. الاتصال بالخادم عبر SSH
 
 ```bash
-ssh -p 65002 u850419603@145.223.119.139
+ssh -p 65002 u307296675@194.164.74.250
 ```
 
 ### 2. رفع المشروع
@@ -35,14 +35,14 @@ cd sarh
 ```
 
 **الخيار ب — الرفع عبر مدير الملفات / SFTP:**
-ارفع كامل مجلد `sarh/` إلى `/home/u850419603/sarh`.
+ارفع كامل مجلد `sarh/` إلى `/home/u307296675/sarh`.
 
 > **أمان:** المشروع يقع **فوق** `public_html`، لذا فقط مجلد `public/` يكون متاحاً عبر الويب.
 
 ### 3. تشغيل سكربت النشر
 
 ```bash
-cd /home/u850419603/sarh
+cd /home/u307296675/sarh
 chmod +x deploy.sh
 bash deploy.sh
 ```
@@ -85,7 +85,7 @@ npm install
 npm run build
 ```
 
-2. ارفع مجلد `public/build/` المُنشأ إلى `/home/u850419603/sarh/public/build/` عبر SFTP.
+2. ارفع مجلد `public/build/` المُنشأ إلى `/home/u307296675/sarh/public/build/` عبر SFTP.
 
 سكربت النشر يكتشف ذلك ويُنبهك — لن يفشل.
 
@@ -97,7 +97,7 @@ npm run build
 
 ```bash
 # الانتقال للمشروع
-cd /home/u850419603/sarh
+cd /home/u307296675/sarh
 
 # نسخ ملف البيئة
 cp .env.production .env
@@ -116,8 +116,8 @@ npm install --no-audit --no-fund && npm run build
 php artisan storage:link --force
 
 # الرابط الرمزي لـ public_html
-rm -rf /home/u850419603/public_html
-ln -s /home/u850419603/sarh/public /home/u850419603/public_html
+rm -rf /home/u307296675/public_html
+ln -s /home/u307296675/sarh/public /home/u307296675/public_html
 
 # كاش الإنتاج
 php artisan optimize
@@ -134,7 +134,7 @@ php artisan sarh:install
 ## إصلاح الصلاحيات (عند ظهور خطأ 500)
 
 ```bash
-cd /home/u850419603/sarh
+cd /home/u307296675/sarh
 chmod -R 775 storage bootstrap/cache
 chmod -R 644 storage/logs/*.log 2>/dev/null || true
 ```
@@ -157,7 +157,7 @@ chgrp -R www-data storage bootstrap/cache
 | خطأ 500 Internal Server Error | `chmod -R 775 storage bootstrap/cache` |
 | "Vite manifest not found" | ارفع `public/build/` — بناء npm كان مفقوداً |
 | "SQLSTATE Connection refused" | تحقق أن DB host هو `127.0.0.1` في `.env` وليس `localhost` |
-| CSS/JS لا يُحمّل | تأكد من الرابط الرمزي: `ls -la /home/u850419603/public_html` يجب أن يُظهر `→ sarh/public` |
+| CSS/JS لا يُحمّل | تأكد من الرابط الرمزي: `ls -la /home/u307296675/public_html` يجب أن يُظهر `→ sarh/public` |
 | "No application encryption key" | `php artisan key:generate --force` |
 | 404 على كل المسارات ما عدا `/` | تحقق من وجود `.htaccess` في `public/`، Hostinger قد يحتاج `mod_rewrite` |
 | صفحة تسجيل الدخول فارغة | `php artisan filament:optimize` ثم `php artisan view:clear` |
@@ -166,8 +166,8 @@ chgrp -R www-data storage bootstrap/cache
 
 ## قائمة التحقق بعد النشر
 
-- [ ] `https://sarh.online` يُحمّل بدون أخطاء
-- [ ] `https://sarh.online/admin` يُظهر صفحة تسجيل دخول Filament
+- [ ] `https://sarh.io` يُحمّل بدون أخطاء
+- [ ] `https://sarh.io/admin` يُظهر صفحة تسجيل دخول Filament
 - [ ] المدير العام يستطيع تسجيل الدخول (المستوى 10)
 - [ ] التنسيق العربي RTL يظهر بشكل صحيح
 - [ ] القائمة الجانبية تُظهر: الحضور، الأمان، غرفة القيادة
