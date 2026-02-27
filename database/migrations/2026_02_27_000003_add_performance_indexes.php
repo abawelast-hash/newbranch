@@ -33,9 +33,6 @@ return new class extends Migration
             if (!$this->indexExists('analytics_snapshots', 'idx_as_branch_date')) {
                 $table->index(['branch_id', 'snapshot_date'], 'idx_as_branch_date');
             }
-            if (!$this->indexExists('analytics_snapshots', 'idx_as_user_date')) {
-                $table->index(['user_id', 'snapshot_date'],   'idx_as_user_date');
-            }
             if (!$this->indexExists('analytics_snapshots', 'idx_as_period')) {
                 $table->index(['snapshot_date', 'period_type'], 'idx_as_period');
             }
@@ -43,27 +40,40 @@ return new class extends Migration
 
         // ─── circulars ───────────────────────────────────────────────────────
         Schema::table('circulars', function (Blueprint $table) {
-            if (!$this->indexExists('circulars', 'idx_cir_scope_branch')) {
+            if (!$this->indexExists('circulars', 'idx_cir_scope_branch') &&
+                Schema::hasColumn('circulars', 'target_scope') &&
+                Schema::hasColumn('circulars', 'target_branch_id')) {
                 $table->index(['target_scope', 'target_branch_id'], 'idx_cir_scope_branch');
             }
-            if (!$this->indexExists('circulars', 'idx_cir_published')) {
-                $table->index(['published_at'],                     'idx_cir_published');
+            if (!$this->indexExists('circulars', 'idx_cir_published') &&
+                Schema::hasColumn('circulars', 'published_at')) {
+                $table->index(['published_at'], 'idx_cir_published');
             }
-            if (!$this->indexExists('circulars', 'idx_cir_expires')) {
-                $table->index(['expires_at'],                       'idx_cir_expires');
+            if (!$this->indexExists('circulars', 'idx_cir_expires') &&
+                Schema::hasColumn('circulars', 'expires_at')) {
+                $table->index(['expires_at'], 'idx_cir_expires');
             }
         });
 
         // ─── users ───────────────────────────────────────────────────────────
         Schema::table('users', function (Blueprint $table) {
-            if (!$this->indexExists('users', 'idx_usr_branch_active')) {
-                $table->index(['branch_id', 'is_active'],       'idx_usr_branch_active');
+            if (!$this->indexExists('users', 'idx_usr_branch_active') &&
+                Schema::hasColumn('users', 'branch_id') &&
+                Schema::hasColumn('users', 'is_active')) {
+                $table->index(['branch_id', 'is_active'], 'idx_usr_branch_active');
             }
-            if (!$this->indexExists('users', 'idx_usr_security_level')) {
-                $table->index(['security_level'],               'idx_usr_security_level');
+            if (!$this->indexExists('users', 'idx_usr_branch_status') &&
+                Schema::hasColumn('users', 'branch_id') &&
+                !Schema::hasColumn('users', 'is_active')) {
+                $table->index(['branch_id', 'status'], 'idx_usr_branch_active');
             }
-            if (!$this->indexExists('users', 'idx_usr_department')) {
-                $table->index(['department_id'],                'idx_usr_department');
+            if (!$this->indexExists('users', 'idx_usr_security_level') &&
+                Schema::hasColumn('users', 'security_level')) {
+                $table->index(['security_level'], 'idx_usr_security_level');
+            }
+            if (!$this->indexExists('users', 'idx_usr_department') &&
+                Schema::hasColumn('users', 'department_id')) {
+                $table->index(['department_id'], 'idx_usr_department');
             }
         });
 
@@ -91,7 +101,6 @@ return new class extends Migration
 
         Schema::table('analytics_snapshots', function (Blueprint $table) {
             $table->dropIndexIfExists('idx_as_branch_date');
-            $table->dropIndexIfExists('idx_as_user_date');
             $table->dropIndexIfExists('idx_as_period');
         });
 
