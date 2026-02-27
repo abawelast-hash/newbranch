@@ -99,17 +99,6 @@ Route::middleware(['auth'])->prefix('attendance')->name('attendance.')->group(fu
 
 /*
 |--------------------------------------------------------------------------
-| Trap System Routes (PWA — Authenticated)
-|--------------------------------------------------------------------------
-| Trap trigger endpoint. The PWA sends trap interactions here.
-| The response is a convincing fake payload — no real data exposed.
-*/
-Route::middleware(['auth'])->prefix('traps')->name('traps.')->group(function () {
-    Route::post('/trigger', [TrapController::class, 'trigger'])->name('trigger');
-});
-
-/*
-|--------------------------------------------------------------------------
 | Telemetry Routes (Sensor Productivity — Authenticated)
 |--------------------------------------------------------------------------
 | Receives edge-processed sensor data from mobile app.

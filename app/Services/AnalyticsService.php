@@ -7,6 +7,7 @@ use App\Models\AttendanceLog;
 use App\Models\Branch;
 use App\Models\EmployeePattern;
 use App\Models\Holiday;
+use App\Models\Leave;
 use App\Models\LossAlert;
 use App\Models\User;
 use Carbon\Carbon;
@@ -109,10 +110,22 @@ class AnalyticsService
         $delayLoss     = (float) $logs->sum('delay_cost');
         $earlyLeaveLoss = (float) $logs->sum('early_leave_cost');
 
-        // Absence loss: employees who didn't check in at all
-        $activeEmployees = $branch->users()->where('status', 'active')->count();
-        $presentIds      = $logs->pluck('user_id')->unique()->count();
-        $absentCount     = max(0, $activeEmployees - $presentIds);
+        // Absence loss: employees who didn't check in at all,
+        // excluding those on approved leave (they're not absent — they're on leave)
+        $activeEmployeeIds = $branch->users()
+            ->where('status', 'active')
+            ->pluck('id');
+
+        $onLeaveIds = Leave::whereIn('user_id', $activeEmployeeIds)
+            ->approved()
+            ->onDate($date)
+            ->pluck('user_id');
+
+        $presentIds  = $logs->pluck('user_id')->unique()->count();
+        $onLeaveCount = $onLeaveIds->count();
+
+        // موظفون غائبون فعلياً = نشطون - حاضرون - في إجازة معتمدة
+        $absentCount = max(0, $activeEmployeeIds->count() - $presentIds - $onLeaveCount);
 
         $vpm = $this->calculateVPM($branch);
         $shiftMinutes = 480;
@@ -744,20 +757,8 @@ class AnalyticsService
         $totalDelay  = (int) $logs->sum('delay_minutes');
         $totalLoss   = (float) $logs->sum('delay_cost') + (float) $logs->sum('early_leave_cost');
 
-        // Streak calculation
-        $streak = 0;
-        $recentLogs = AttendanceLog::where('user_id', $user->id)
-            ->orderByDesc('attendance_date')
-            ->limit(30)
-            ->get();
-
-        foreach ($recentLogs as $log) {
-            if ($log->status === 'present' && $log->delay_minutes == 0) {
-                $streak++;
-            } else {
-                break;
-            }
-        }
+        // Streak calculation — عبر StreakService (يتجاهل العطل والإجازات)
+        $streak = app(StreakService::class)->calculateCached($user);
 
         // Branch ranking
         $branchRank = null;

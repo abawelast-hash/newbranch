@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# =============================================================================
+# SARH Pre-Commit Hook — منع رفع البيانات الحساسة
+# =============================================================================
+# التثبيت:
+#   cp hooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# أو استخدم:
+#   bash hooks/install-hooks.sh
+# =============================================================================
+
+set -euo pipefail
+
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+FOUND_ISSUES=0
+
+# ─── الأنماط المحظورة ─────────────────────────────────────────────────────────
+# الصيغة: "وصف الخطر|regex"
+declare -a FORBIDDEN=(
+    "كلمة مرور صريحة|DB_PASSWORD\s*=\s*[^${\s]{3,}"
+    "مفتاح التطبيق|APP_KEY\s*=\s*base64:[A-Za-z0-9+/=]{40,}"
+    "توكن API حقيقي|[a-zA-Z0-9_]{20,}:[a-zA-Z0-9_\-]{20,}"
+    "مفتاح SSH خاص|-----BEGIN (RSA|EC|OPENSSH) PRIVATE KEY-----"
+    "بيانات اتصال MySQL|mysql://[^:]+:[^@]+@[^/]+"
+    "كلمة مرور Hostinger|Goolbx512"
+    "اسم مستخدم قاعدة بيانات|u[0-9]{9}_[a-z]+"
+    "عنوان IP الخادم|194\.164\.[0-9]+\.[0-9]+"
+    "مفتاح Stripe|sk_(live|test)_[a-zA-Z0-9]+"
+    "كلمة مرور بريد|MAIL_PASSWORD\s*=\s*[^${\s]{3,}"
+)
+
+# ─── امتدادات الملفات التي يجب فحصها ─────────────────────────────────────────
+SCAN_EXTENSIONS=("env" "md" "txt" "json" "php" "sh" "yaml" "yml" "conf" "config")
+
+# ─── الملفات المستثناة ────────────────────────────────────────────────────────
+EXCLUDE_PATTERNS=(
+    "vendor/"
+    "node_modules/"
+    ".env.example"
+    "public/build/"
+    "*.min.js"
+    "*.min.css"
+    "lang/"
+    "tests/"
+    "secure_cleanup.sh"
+    "hooks/"
+)
+
+# =============================================================================
+# دوال مساعدة
+# =============================================================================
+
+is_excluded() {
+    local filepath="$1"
+    for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+        [[ "$filepath" == *"$pattern"* ]] && return 0
+    done
+    return 1
+}
+
+file_has_sensitive_extension() {
+    local filepath="$1"
+    local ext="${filepath##*.}"
+    for allowed in "${SCAN_EXTENSIONS[@]}"; do
+        [[ "$ext" == "$allowed" ]] && return 0
+    done
+    return 1
+}
+
+# =============================================================================
+# الفحص الرئيسي
+# =============================================================================
+
+main() {
+    echo -e "\n${BOLD}🔒 SARH Security Pre-Commit Check${RESET}"
+    echo -e "  فحص الملفات المُضافة للـ staging...\n"
+
+    # احصل على قائمة الملفات المرحلية
+    local staged_files
+    staged_files=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || echo "")
+
+    if [[ -z "$staged_files" ]]; then
+        echo -e "  ${GREEN}✓ لا توجد ملفات للفحص${RESET}\n"
+        exit 0
+    fi
+
+    while IFS= read -r filepath; do
+        # تجاوز الملفات المستثناة
+        is_excluded "$filepath" && continue
+
+        # تجاوز الملفات غير الموجودة
+        [[ ! -f "$filepath" ]] && continue
+
+        # فحص كل نمط محظور
+        for forbidden_def in "${FORBIDDEN[@]}"; do
+            local label="${forbidden_def%%|*}"
+            local regex="${forbidden_def#*|}"
+
+            local matches
+            matches=$(git diff --cached -- "$filepath" \
+                | grep "^+" \
+                | grep -v "^+++" \
+                | grep -iE "$regex" 2>/dev/null || true)
+
+            if [[ -n "$matches" ]]; then
+                if [[ $FOUND_ISSUES -eq 0 ]]; then
+                    echo -e "${RED}${BOLD}❌ تم اكتشاف بيانات حساسة في الـ commit!${RESET}"
+                    echo -e "${RED}══════════════════════════════════════════${RESET}"
+                fi
+
+                echo -e "\n  ${RED}⚠ $label${RESET}"
+                echo -e "  الملف: ${YELLOW}${BOLD}$filepath${RESET}"
+
+                # أظهر السطر المشكل (مع إخفاء القيمة)
+                while IFS= read -r match_line; do
+                    local masked
+                    masked=$(echo "$match_line" | sed 's/=.*/=**REDACTED**/g')
+                    echo -e "  ${YELLOW}$masked${RESET}"
+                done <<< "$matches"
+
+                FOUND_ISSUES=$((FOUND_ISSUES + 1))
+            fi
+        done
+    done <<< "$staged_files"
+
+    # ─── النتيجة النهائية ─────────────────────────────────────────────────────
+    if [[ $FOUND_ISSUES -gt 0 ]]; then
+        echo ""
+        echo -e "${RED}═══════════════════════════════════════════════════${RESET}"
+        echo -e "${RED}${BOLD}  ❌ رُفض الـ commit — $FOUND_ISSUES مشكلة أمنية${RESET}"
+        echo -e "${RED}═══════════════════════════════════════════════════${RESET}"
+        echo ""
+        echo -e "  ${YELLOW}للإصلاح:${RESET}"
+        echo -e "  1. نفّذ: ${CYAN}bash secure_cleanup.sh --fix${RESET}"
+        echo -e "  2. أو يدوياً: غيّر القيم لمتغيرات بيئة"
+        echo -e "  3. لتجاوز قسري (غير موصى به): ${YELLOW}git commit --no-verify${RESET}"
+        echo ""
+        exit 1
+    fi
+
+    echo -e "  ${GREEN}${BOLD}✓ لا توجد بيانات حساسة — الـ commit مسموح${RESET}\n"
+    exit 0
+}
+
+main

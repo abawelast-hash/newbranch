@@ -35,6 +35,7 @@ class Branch extends Model
         'target_attendance_rate',
         'max_acceptable_loss_percent',
         'vpm_target',
+        'weekend_days',    // JSON: ['friday','saturday'] — أيام العطلة الأسبوعية
     ];
 
     protected function casts(): array
@@ -51,6 +52,7 @@ class Branch extends Model
             'target_attendance_rate'     => 'decimal:2',
             'max_acceptable_loss_percent'=> 'decimal:2',
             'vpm_target'                 => 'decimal:2',
+            'weekend_days'               => 'array', // JSON cast
         ];
     }
 

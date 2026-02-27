@@ -41,19 +41,19 @@ class AppPanelProvider extends PanelProvider
             ->login(CustomLogin::class)
             ->passwordReset()
             ->colors([
-                // SARH v3.0: Navy + Gold Executive Theme
+                // SARH Neo: Teal Employee Portal Theme
                 'primary' => [
-                    50  => '#FDFAF0',
-                    100 => '#FBF3D4',
-                    200 => '#F5E4A3',
-                    300 => '#EDD472',
-                    400 => '#E8C852',
-                    500 => '#D4A841',
-                    600 => '#B8922E',
-                    700 => '#967520',
-                    800 => '#745A18',
-                    900 => '#5C4714',
-                    950 => '#362A0C',
+                    50  => '#F0FDFA',
+                    100 => '#CCFBF1',
+                    200 => '#99F6E4',
+                    300 => '#5EEAD4',
+                    400 => '#2DD4BF',
+                    500 => '#14B8A6',
+                    600 => '#0D9488',
+                    700 => '#0F766E',
+                    800 => '#115E59',
+                    900 => '#134E4A',
+                    950 => '#042F2E',
                 ],
                 'danger'  => Color::Rose,
                 'warning' => Color::Amber,

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SafeFormulaEngine;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -72,14 +73,14 @@ class ReportFormula extends Model
     /**
      * Evaluate the formula with given variable values.
      *
+     * Uses SafeFormulaEngine (Shunting-yard / RPN) — NO eval() is called.
+     *
      * @param  array<string, float>  $values  e.g. ['attendance' => 95.5, 'task_completion' => 87.0]
-     * @return float|null
+     * @return float|null  Returns null if variables are missing or the formula is invalid.
      */
     public function evaluate(array $values): ?float
     {
-        $formula = $this->formula;
-
-        // Validate all required variables are provided
+        // Guard: all declared variables must be provided
         $requiredVars = array_keys($this->variables ?? []);
         foreach ($requiredVars as $var) {
             if (!array_key_exists($var, $values)) {
@@ -87,25 +88,9 @@ class ReportFormula extends Model
             }
         }
 
-        // Replace variables with their values (longest first to avoid partial replacements)
-        $vars = array_keys($values);
-        usort($vars, fn ($a, $b) => strlen($b) - strlen($a));
-
-        foreach ($vars as $var) {
-            $formula = str_replace($var, (string) (float) $values[$var], $formula);
-        }
-
-        // Sanitize: Only allow numbers, operators, parentheses, spaces, and decimal points
-        $sanitized = preg_replace('/[^0-9+\-*\/().%\s]/', '', $formula);
-
-        if (empty($sanitized) || $sanitized !== $formula) {
-            return null; // Formula contains invalid characters
-        }
-
         try {
-            // Safe evaluation using PHP's mathematical evaluation
-            $result = @eval("return ({$sanitized});");
-            return is_numeric($result) ? round((float) $result, 4) : null;
+            $result = app(SafeFormulaEngine::class)->evaluate($this->formula, $values);
+            return round($result, 4);
         } catch (\Throwable) {
             return null;
         }
@@ -133,14 +118,11 @@ class ReportFormula extends Model
 
     /**
      * Validate formula syntax without executing.
+     * Uses SafeFormulaEngine::validate() — NO eval().
      */
     public function validateFormula(): bool
     {
-        $testValues = [];
-        foreach (($this->variables ?? []) as $key => $desc) {
-            $testValues[$key] = 1.0;
-        }
-
-        return $this->evaluate($testValues) !== null;
+        return app(SafeFormulaEngine::class)
+            ->validate($this->formula, $this->variables ?? []);
     }
 }

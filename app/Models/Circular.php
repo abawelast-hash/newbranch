@@ -81,4 +81,38 @@ class Circular extends Model
         return $query->published()
                      ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
     }
+
+    /**
+     * فلتر التعاميم المرئية للمستخدم حسب target_scope.
+     * المستوى 10 يرى الكل عبر Gate::before — لا حاجة لاستثناء هنا.
+     */
+    public function scopeForUser($query, ?\App\Models\User $user = null)
+    {
+        $user ??= auth()->user();
+
+        if (!$user) {
+            return $query->whereRaw('0 = 1'); // لا مستخدم = لا نتائج
+        }
+
+        // المستوى 10 يرى الكل
+        if ($user->security_level >= 10 || $user->is_super_admin) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($user) {
+            $q->where('target_scope', 'all')
+              ->orWhere(function ($q2) use ($user) {
+                  $q2->where('target_scope', 'branch')
+                     ->where('target_branch_id', $user->branch_id);
+              })
+              ->orWhere(function ($q2) use ($user) {
+                  $q2->where('target_scope', 'department')
+                     ->where('target_department_id', $user->department_id);
+              })
+              ->orWhere(function ($q2) use ($user) {
+                  $q2->where('target_scope', 'role')
+                     ->where('target_role_id', $user->role_id);
+              });
+        });
+    }
 }

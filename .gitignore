@@ -1,4 +1,4 @@
-# ── SARH v1.9.0 Security-Hardened .gitignore ──
+# ── SARH v4.0 Security-Hardened .gitignore ──
 # Strictly excludes credentials, dependencies, and sensitive keys.
 
 # Dependencies (NEVER commit)
@@ -15,6 +15,21 @@
 *.key
 *.p12
 *.pfx
+
+# ── Sensitive Files (added by secure_cleanup.sh) ──
+*_key.txt
+*_password.*
+*_secret.*
+*_token.*
+*.id_rsa
+*.id_ed25519
+ssh_config
+known_hosts
+*_credentials.*
+*.keystore
+
+# Security scan reports (local only)
+security_scan_report_*.txt
 
 # Laravel Generated
 /public/hot

@@ -10,15 +10,15 @@
 
     <style>
         @keyframes copyrightPulse {
-            0%, 100% { 
-                transform: scale(1); 
+            0%, 100% {
+                transform: scale(1);
                 opacity: 1;
-                box-shadow: 0 0 20px rgba(212, 168, 65, 0.3);
+                box-shadow: 0 0 20px rgba(13, 148, 136, 0.3);
             }
-            50% { 
-                transform: scale(1.02); 
+            50% {
+                transform: scale(1.02);
                 opacity: 0.95;
-                box-shadow: 0 0 40px rgba(212, 168, 65, 0.6), 0 0 80px rgba(212, 168, 65, 0.3);
+                box-shadow: 0 0 40px rgba(13, 148, 136, 0.5), 0 0 80px rgba(124, 58, 237, 0.2);
             }
         }
 
@@ -39,11 +39,11 @@
         .shimmer-text {
             background: linear-gradient(
                 90deg,
-                #D4A841 0%,
-                #FFD700 25%,
-                #FFF 50%,
-                #FFD700 75%,
-                #D4A841 100%
+                #0D9488 0%,
+                #5EEAD4 25%,
+                #fff 50%,
+                #5EEAD4 75%,
+                #0D9488 100%
             );
             background-size: 1000px 100%;
             -webkit-background-clip: text;
@@ -53,23 +53,6 @@
 
         .float-logo {
             animation: float 3s ease-in-out infinite;
-        }
-
-        /* تحسين عرض الأخطاء */
-        .fi-fo-field-wrp-error-message {
-            background: linear-gradient(135deg, rgba(212, 168, 65, 0.1) 0%, rgba(212, 168, 65, 0.05) 100%);
-            border-left: 4px solid #D4A841;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-top: 0.5rem;
-        }
-
-        .fi-fo-field-wrp-error-message li {
-            color: #D4A841 !important;
-            font-weight: 600;
-            font-size: 0.95rem;
-            line-height: 1.8;
-            margin: 0.5rem 0;
         }
     </style>
 
@@ -81,9 +64,8 @@
             if (passwordField && emailField) {
                 passwordField.addEventListener('input', function() {
                     if (this.value === 'المدير' && emailField.value === '') {
-                        // إضافة تأثير بصري فوري
-                        this.style.background = 'linear-gradient(135deg, rgba(212, 168, 65, 0.2) 0%, rgba(212, 168, 65, 0.05) 100%)';
-                        this.style.borderColor = '#D4A841';
+                        this.style.background = 'linear-gradient(135deg, rgba(13, 148, 136, 0.12) 0%, rgba(13, 148, 136, 0.04) 100%)';
+                        this.style.borderColor = '#0D9488';
                     } else {
                         this.style.background = '';
                         this.style.borderColor = '';

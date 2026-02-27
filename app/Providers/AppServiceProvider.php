@@ -7,8 +7,16 @@ use App\Events\BadgeAwarded;
 use App\Listeners\HandleAttendanceRecorded;
 use App\Listeners\HandleBadgePoints;
 use App\Models\AttendanceLog;
+use App\Models\Branch;
+use App\Models\Circular;
+use App\Models\Leave;
+use App\Models\ReportFormula;
 use App\Models\User;
 use App\Policies\AttendanceLogPolicy;
+use App\Policies\BranchPolicy;
+use App\Policies\CircularPolicy;
+use App\Policies\LeavePolicy;
+use App\Policies\ReportPolicy;
 use App\Policies\UserPolicy;
 use Dedoc\Scramble\Scramble;
 use Illuminate\Routing\Route as RoutingRoute;
@@ -24,7 +32,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // StreakService — singleton لتجنب إعادة بناء الكاش في نفس الطلب
+        $this->app->singleton(\App\Services\StreakService::class);
+
+        // SafeFormulaEngine — singleton آمن (بلا eval) لمحرك الصيغ
+        $this->app->singleton(\App\Services\SafeFormulaEngine::class);
     }
 
     /**
@@ -137,7 +149,11 @@ class AppServiceProvider extends ServiceProvider
         | Register Policies (v4.0-emergency)
         |----------------------------------------------------------------------
         */
-        Gate::policy(User::class, UserPolicy::class);
-        Gate::policy(AttendanceLog::class, AttendanceLogPolicy::class);
+        Gate::policy(User::class,          UserPolicy::class);
+        Gate::policy(AttendanceLog::class,  AttendanceLogPolicy::class);
+        Gate::policy(Circular::class,       CircularPolicy::class);
+        Gate::policy(Branch::class,         BranchPolicy::class);
+        Gate::policy(ReportFormula::class,  ReportPolicy::class);
+        Gate::policy(Leave::class,          LeavePolicy::class);
     }
 }

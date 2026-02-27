@@ -18,9 +18,12 @@ class CircularsWidget extends Component
 
     public function loadCirculars(): void
     {
-        $userId = Auth::id();
+        /** @var \App\Models\User $user */
+        $user   = Auth::user();
+        $userId = $user->id;
 
         $this->circulars = Circular::active()
+            ->forUser($user)                                   // ← فلتر الصلاحيات
             ->with(['acknowledgments' => function ($query) use ($userId) {
                 $query->where('user_id', $userId);
             }])

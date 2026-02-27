@@ -45,19 +45,19 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogoHeight('2.5rem')
             ->favicon(fn () => Setting::instance()->favicon_url)
             ->colors([
-                // SARH v3.0: Navy + Gold Executive Theme
+                // SARH Neo: Violet-Indigo Admin Theme
                 'primary' => [
-                    50  => '#FDFAF0',
-                    100 => '#FBF3D4',
-                    200 => '#F5E4A3',
-                    300 => '#EDD472',
-                    400 => '#E8C852',
-                    500 => '#D4A841',
-                    600 => '#B8922E',
-                    700 => '#967520',
-                    800 => '#745A18',
-                    900 => '#5C4714',
-                    950 => '#362A0C',
+                    50  => '#F5F3FF',
+                    100 => '#EDE9FE',
+                    200 => '#DDD6FE',
+                    300 => '#C4B5FD',
+                    400 => '#A78BFA',
+                    500 => '#8B5CF6',
+                    600 => '#7C3AED',
+                    700 => '#6D28D9',
+                    800 => '#5B21B6',
+                    900 => '#4C1D95',
+                    950 => '#2E1065',
                 ],
                 'danger'  => Color::Red,
                 'warning' => Color::Amber,
@@ -111,7 +111,8 @@ class AdminPanelProvider extends PanelProvider
             ->spa()
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn () => new HtmlString('<link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#0F172A">'),
+                fn () => new HtmlString('<link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#4C1D95">'),
+
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
